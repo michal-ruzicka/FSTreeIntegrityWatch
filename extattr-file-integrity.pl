@@ -14,6 +14,7 @@ use Carp qw(carp cluck croak confess);
 
 # External modules
 use Scalar::Util qw(blessed);
+use Try::Tiny;
 
 # FSTreeIntegrityWatch package
 use FindBin;
@@ -33,16 +34,15 @@ FSTreeIntegrityWatch::set_stack_trace_prints('1'); # Be verbose about errors.
 #
 print "Working on file: '$file'\n";
 
-eval {
+try {
     print get_file_checksum('SHA-2', $file)."\n";
-};
-if (my $e = $@) {
-    if ( blessed $e && $e->can('error') ) {
-        croak $e->error;
+} catch {
+    if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
+        croak "Exception handling:\n".$_;
     } else {
-        croak $e;
+        croak "Exception handling:\n".$_;
     }
-}
+};
 
 
 # vim:textwidth=80:expandtab:tabstop=4:shiftwidth=4:fileencodings=utf8:spelllang=en
