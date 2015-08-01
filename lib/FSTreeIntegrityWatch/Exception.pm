@@ -45,6 +45,12 @@ use Exception::Class (
         'description' => 'error thrown during hash computation',
     },
 
+    'FSTreeIntegrityWatch::Exception::ExtAttr' => {
+        'alias'       => 'extattr_error',
+        'isa'         => 'FSTreeIntegrityWatch::Exception',
+        'description' => 'error thrown when working with extended attributes',
+    },
+
 );
 
 # Controls whether or not a stack trace is included in the value of the

@@ -16,7 +16,9 @@ use Try::Tiny;
 # FSTreeIntegrityWatch package modules
 use FindBin;
 use lib "$FindBin::Bin/lib/";
-use FSTreeIntegrityWatch qw(:standard);
+use FSTreeIntegrityWatch qw(set_exception_verbosity);
+use FSTreeIntegrityWatch::Digest qw(:standard);
+use FSTreeIntegrityWatch::ExtAttr qw(:standard);
 
 
 
@@ -24,16 +26,18 @@ use FSTreeIntegrityWatch qw(:standard);
 # Global configuration
 #
 my $file = "$FindBin::Bin/testdata/data/file6";
+my $alg = 'SHA-1';
+my $attr = $alg;
 FSTreeIntegrityWatch::set_exception_verbosity('1');
 
 
 #
 # Main
 #
-print "Working on file: '$file'\n";
-
 try {
-    print get_file_checksum('SHA-1', $file)."\n";
+    my $checksum = get_file_checksum($alg, $file);
+    store_file_checksum($file, $attr, $checksum);
+    print "Stored '$checksum' as the extended attribute '$attr' at '$file'.\n";
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
         die "$_\n";
