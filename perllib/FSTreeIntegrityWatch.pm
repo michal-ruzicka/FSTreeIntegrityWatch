@@ -23,7 +23,7 @@ use Carp qw(carp cluck croak confess);
 
 
 # Package modules
-use FSTreeIntegrityWatch::Exception;
+use FSTreeIntegrityWatch::Exception qw(:all);
 
 # External modules
 use Digest::SHA;
@@ -45,7 +45,7 @@ sub set_stack_trace_prints {
     } else {
         my $err = "Invalid parameter, use '0' or '1'";
         carp "$err";
-        FSTreeIntegrityWatch::Exception::Configuration->throw($err);
+        config_error($err);
     }
 
 }
@@ -80,7 +80,7 @@ sub get_file_checksum {
 
     if (defined($err)) {
         carp "$err";
-        FSTreeIntegrityWatch::Exception::Digest->throw($err);
+        digest_error($err);
     } else {
         my $checksumer = Digest::SHA->new("$alg", 'b');
         $rv = $checksumer->addfile($filename)->hexdigest;

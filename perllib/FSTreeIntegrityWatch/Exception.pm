@@ -7,6 +7,16 @@ use strict;
 use warnings;
 use utf8;
 
+# Public methods
+use Exporter 'import';
+our @EXPORT_OK = qw(
+    general_error
+    config_error
+    digest_error
+);
+our %EXPORT_TAGS = (
+    all => [ @EXPORT_OK ],
+);
 
 # Declare hierarchy of exceptions.
 use Exception::Class (
