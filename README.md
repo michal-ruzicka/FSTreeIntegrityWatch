@@ -1,20 +1,22 @@
 FSTreeIntegrityWatch
 ====================
 
-Filesystem Extended Attributes Test
------------------------------------
+Filesystem Extended Attributes File Integrity Tool
+--------------------------------------------------
 
-Scripts to test working with filesystem extended attributes.
+Tool to store/check file integrity information in filesystem extended
+attributes.
 
 See 
  * http://man7.org/linux/man-pages/man5/attr.5.html
 
 
-### extattr-test.pl
+### extattr-file-integrity.pl
 
-Perl script uses `File::ExtAttr` module that depens on `libattr`.
+The Perl script uses `File::ExtAttr` module that depends on `libattr`.
 
-In case of `cpan File::ExtAttr` installation error your system possibly needs to have the `libattr-devel` packages installed.
+In case of `cpan File::ExtAttr` installation error your system possibly needs 
+`libattr-devel` packages to be installed.
 
 See
  * http://search.cpan.org/~richdawe/File-ExtAttr/lib/File/ExtAttr.pm
