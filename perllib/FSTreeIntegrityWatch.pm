@@ -24,8 +24,9 @@ our %EXPORT_TAGS = (
 use FSTreeIntegrityWatch::Exception qw(:all);
 
 # External modules
-use Digest::SHA;
+use Digest;
 use File::ExtAttr ':all';
+use Try::Tiny;
 
 
 
@@ -66,21 +67,18 @@ sub get_file_checksum {
     if (not defined($filename)) {
         $err = "No filename specified.";
     } elsif (-e $filename and -f $filename and -r $filename) {
-        if (not defined($alg)) {
-            $err = "No digest algorithm specified.";
-        } elsif ($alg !~ /^SHA-?(1|224|256|384|512)$/i) {
-            $err = "'$alg' is not a valid digest algorithm.";
-        }
+        $err = "No digest algorithm specified." if (not defined($alg));
     } else {
         $err = "'$filename' is not a readable file.";
     }
 
-    if (defined($err)) {
-        digest_error($err);
-    } else {
-        my $checksumer = Digest::SHA->new("$alg", 'b');
+    digest_error($err) if (defined($err));
+    try {
+        my $checksumer = Digest->new("$alg", 'b');
         $rv = $checksumer->addfile($filename)->hexdigest;
-    }
+    } catch {
+        digest_error("Digest computation using '$alg' algorithm failed.\n".$_);
+    };
 
     return $rv;
 
