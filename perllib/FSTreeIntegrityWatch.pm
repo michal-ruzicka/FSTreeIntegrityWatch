@@ -5,11 +5,12 @@ use strict;
 use warnings;
 use utf8;
 
+
 # Public methods
 use Exporter 'import';
 our @EXPORT_OK = qw(
     get_file_checksum
-    set_stack_trace_prints
+    set_exception_verbosity
 );
 our %EXPORT_TAGS = (
     all      => [ @EXPORT_OK ],
@@ -17,9 +18,6 @@ our %EXPORT_TAGS = (
         get_file_checksum
     ) ],
 );
-
-# Error prints
-use Carp qw(carp cluck croak confess);
 
 
 # Package modules
@@ -31,21 +29,20 @@ use File::ExtAttr ':all';
 
 
 
-# Enable/disable stack trace for carp/cluck error prints
+# Enable/disable stack trace as part of the standard exception error message.
 # args
-#   1 or 0 to enable/disable stack trace prints
+#   1 or 0 (default) to enable/disable stack trace in exception error messages
 # throws
-#   FSTreeIntegrityWatch::Exception::Configuration in case invalid argument
-sub set_stack_trace_prints {
+#   FSTreeIntegrityWatch::Exception::Configuration in case of an invalid
+#                                                  argument
+sub set_exception_verbosity {
 
     my $value = shift @_;
 
     if ($value =~ /^[10]$/) {
-        $Carp::Verbose = $value;
+        $FSTreeIntegrityWatch::Exception::exception_verbosity = $value;
     } else {
-        my $err = "Invalid parameter, use '0' or '1'";
-        carp "$err";
-        config_error($err);
+        config_error("Invalid parameter, use '0' or '1'.");
     }
 
 }
@@ -55,8 +52,8 @@ sub set_stack_trace_prints {
 #   algorithm to compute the checksum with
 #   path of file to compute the checksum of
 # returns
-#   the checksum as string
-#   or undef in case of an error.
+#   the checksum as string or
+#   undef in case of an error.
 # throws
 #   FSTreeIntegrityWatch::Exception::Digest in case of any error
 sub get_file_checksum {
@@ -67,19 +64,18 @@ sub get_file_checksum {
     # Check parameters
     my $err = undef;
     if (not defined($filename)) {
-        $err = "No filename specified";
+        $err = "No filename specified.";
     } elsif (-e $filename and -f $filename and -r $filename) {
         if (not defined($alg)) {
-            $err = "No digest algorithm specified";
+            $err = "No digest algorithm specified.";
         } elsif ($alg !~ /^SHA-?(1|224|256|384|512)$/i) {
-            $err = "'$alg' is not a valid digest algorithm";
+            $err = "'$alg' is not a valid digest algorithm.";
         }
     } else {
-        $err = "'$filename' is not readable file";
+        $err = "'$filename' is not a readable file.";
     }
 
     if (defined($err)) {
-        carp "$err";
         digest_error($err);
     } else {
         my $checksumer = Digest::SHA->new("$alg", 'b');

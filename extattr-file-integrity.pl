@@ -8,25 +8,23 @@ binmode(STDIN,  "utf8");
 binmode(STDOUT, "utf8");
 binmode(STDERR, "utf8");
 
-# Error prints
-use Carp qw(carp cluck croak confess);
-
 
 # External modules
 use Scalar::Util qw(blessed);
 use Try::Tiny;
 
-# FSTreeIntegrityWatch package
+# FSTreeIntegrityWatch package modules
 use FindBin;
 use lib "$FindBin::Bin/perllib/";
 use FSTreeIntegrityWatch qw(:standard);
+
 
 
 #
 # Global configuration
 #
 my $file = "$FindBin::Bin/testdata/data/file6";
-FSTreeIntegrityWatch::set_stack_trace_prints('1'); # Be verbose about errors.
+FSTreeIntegrityWatch::set_exception_verbosity('1');
 
 
 #
@@ -38,9 +36,9 @@ try {
     print get_file_checksum('SHA-2', $file)."\n";
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
-        croak "Exception handling:\n".$_;
+        die "$_\n";
     } else {
-        croak "Exception handling:\n".$_;
+        die $_;
     }
 };
 

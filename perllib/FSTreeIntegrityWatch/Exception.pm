@@ -1,11 +1,13 @@
 
 package FSTreeIntegrityWatch::Exception;
 
-# Great tutorial: http://www.drdobbs.com/web-development/exception-handling-in-perl-with-exceptio/184416129
+# Great tutorial:
+# http://www.drdobbs.com/web-development/exception-handling-in-perl-with-exceptio/184416129
 
 use strict;
 use warnings;
 use utf8;
+
 
 # Public methods
 use Exporter 'import';
@@ -19,6 +21,9 @@ our %EXPORT_TAGS = (
 );
 
 
+
+# Configures inclusion/exclusion of stack trace in exception error messages.
+our $exception_verbosity = 0;
 
 # Declare hierarchy of exceptions.
 use Exception::Class (
@@ -41,6 +46,13 @@ use Exception::Class (
     },
 
 );
+
+# Controls whether or not a stack trace is included in the value of the
+# as_string() method for an object of a class. If Trace() is set to a true
+# value, then the class and its children will default to including a trace.
+sub Trace {
+    return $exception_verbosity;
+}
 
 
 1;
