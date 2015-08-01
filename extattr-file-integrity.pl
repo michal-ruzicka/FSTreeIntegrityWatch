@@ -15,7 +15,7 @@ use Try::Tiny;
 
 # FSTreeIntegrityWatch package modules
 use FindBin;
-use lib "$FindBin::Bin/perllib/";
+use lib "$FindBin::Bin/lib/";
 use FSTreeIntegrityWatch qw(:standard);
 
 
@@ -33,7 +33,7 @@ FSTreeIntegrityWatch::set_exception_verbosity('1');
 print "Working on file: '$file'\n";
 
 try {
-    print get_file_checksum('SHA-2', $file)."\n";
+    print get_file_checksum('SHA-1', $file)."\n";
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
         die "$_\n";
