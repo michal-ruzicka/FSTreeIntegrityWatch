@@ -6,62 +6,74 @@ use warnings;
 use utf8;
 
 
-# Public methods
-use Exporter 'import';
-our @EXPORT_OK = qw(
-    get_file_checksum
-);
-our %EXPORT_TAGS = (
-    all      => [ @EXPORT_OK ],
-    standard => [ qw(
-        get_file_checksum
-    ) ],
-);
-
-
 # Package modules
-use FSTreeIntegrityWatch qw(decode_locale_if_necessary);
-use FSTreeIntegrityWatch::Exception qw(:all);
+use FSTreeIntegrityWatch::Tools qw(decode_locale_if_necessary);
 
 # External modules
 use Digest;
 use Try::Tiny;
 
 
+# Use Class::Tiny for class construction.
+use Class::Tiny 1.001 qw(context); # BUILDARGS method was introduced in version 1.001 of the module.
 
-# Compute checksum on given file using selected algorithm.
-# args
-#   algorithm to compute the checksum with
-#   path of file to compute the checksum of
-# returns
-#   the checksum as string or
-#   undef in case of an error.
-# throws
-#   FSTreeIntegrityWatch::Exception::Digest in case of any error
-sub get_file_checksum {
 
-    my ($alg, $filename) = @_;
-    my $rv = undef;
 
-    # Check parameters
-    my $err = undef;
-    if (not defined($filename)) {
-        $err = "No filename specified.";
-    } elsif (-e $filename and -f $filename and -r $filename) {
-        $err = "No digest algorithm specified." if (not defined($alg));
-    } else {
-        $err = "'$filename' is not a readable file.";
+# Constructor arguments hook validates parameters.
+sub BUILDARGS {
+
+    my $class = shift @_;
+    my $context = shift @_;
+
+    # If not context (i.e. FSTreeIntegrityWatch base class instance) is provided
+    # by the caller, create an instance with default parameters.
+    if (not defined($context)) {
+        $context = FSTreeIntegrityWatch->new();
     }
 
-    digest_error($err) if (defined($err));
-    try {
-        my $checksumer = Digest->new("$alg", 'b');
-        $rv = $checksumer->addfile($filename)->hexdigest;
-    } catch {
-        digest_error("Digest computation using '$alg' algorithm failed.\n".decode_locale_if_necessary($_));
-    };
+    return { 'context' => $context };
 
-    return $rv;
+}
+
+# Compute checksum on all files using all algorithms in the instance's context.
+# returns
+#   checksums hash ref of the instance's context
+# throws
+#   FSTreeIntegrityWatch::Exception::Digest in case of any error
+sub compute_checksums {
+
+    my $self = shift @_;
+
+    my $cs = $self->context->checksums();
+
+    foreach my $filename (@{$self->context->files()}) {
+        foreach my $alg (@{$self->context->algorithms()}) {
+
+            my $err = undef;
+            if (not defined($filename)) {
+                $err = "No filename specified.";
+            } elsif (-e $filename and -f $filename and -r $filename) {
+                $err = "No digest algorithm specified." if (not defined($alg));
+            } else {
+                $err = "'$filename' is not a readable file.";
+            }
+
+            $self->context->exp('Digest', $err) if (defined($err));
+            my ($checksumer, $checksum);
+            try {
+                $checksumer = Digest->new("$alg", 'b');
+                $checksum = $checksumer->addfile($filename)->hexdigest;
+            } catch {
+                $self->context->exp('Digest', "Digest computation using '$alg' algorithm failed.\n".decode_locale_if_necessary($_));
+            };
+
+            $cs->{$filename}->{$alg}->{'checksum_value'} = $checksum;
+            $cs->{$filename}->{$alg}->{'checksum_time'} = time;
+
+        }
+    }
+
+    return $cs;
 
 }
 
