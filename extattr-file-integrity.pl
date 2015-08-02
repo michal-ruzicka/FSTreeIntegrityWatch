@@ -26,9 +26,7 @@ use Try::Tiny;
 # FSTreeIntegrityWatch package modules
 use FindBin;
 use lib "$FindBin::Bin/lib/";
-use FSTreeIntegrityWatch qw(decode_locale_if_necessary set_exception_verbosity);
-use FSTreeIntegrityWatch::Digest qw(:standard);
-use FSTreeIntegrityWatch::ExtAttr qw(:standard);
+use FSTreeIntegrityWatch;
 
 
 
@@ -38,16 +36,31 @@ use FSTreeIntegrityWatch::ExtAttr qw(:standard);
 my $file = "$FindBin::Bin/testdata/data/file6";
 my $alg = 'SHA-1';
 my $attr = $alg;
-FSTreeIntegrityWatch::set_exception_verbosity('1');
+my $exception_verbosity = '1';
 
 
 #
 # Main
 #
+my $fstiw = FSTreeIntegrityWatch->new(
+    'exception_verbosity' => $exception_verbosity,
+    'algorithms' => [ "$alg" ],
+    'files' => [ "$file" ],
+);
+
+printf("%s: %s\n", 'exception_verbosity', $fstiw->exception_verbosity());
+printf("%s: %s\n", 'algorithms', join('; ', @{$fstiw->algorithms()}));
+printf("%s: %s\n", 'files', join('; ', @{$fstiw->files()}));
+
 try {
-    my $checksum = get_file_checksum($alg, $file);
-    store_file_checksum($file, $attr, $checksum);
-    print "Stored '$checksum' as the extended attribute '$attr' at '$file'.\n";
+    my $results = $fstiw->store_checksums();
+    foreach my $file (sort keys %$results) {
+        foreach my $alg (sort keys %{$results->{$file}}) {
+            printf("Stored '%s' hash '%s' as the extended attribute '%s' at '%s'.\n",
+                    $alg, $results->{$file}->{$alg}->{'checksum'},
+                    $results->{$file}->{$alg}->{'attr_name'}, $file);
+        }
+    }
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
         die "$_\n";

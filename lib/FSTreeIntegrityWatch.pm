@@ -6,35 +6,27 @@ use warnings;
 use utf8;
 
 
-# Public methods
-use Exporter 'import';
-our @EXPORT_OK = qw(
-    decode_locale_if_necessary
-    set_exception_verbosity
-);
+# Package modules
+use FSTreeIntegrityWatch::Digest qw(:standard);
+use FSTreeIntegrityWatch::ExtAttr qw(:standard);
 
 
-# External modules
-use Encode;
-use Encode::Locale;
+# Use Class::Tiny for class construction.
+use subs 'exception_verbosity'; # Necessary to provide our own accessor.
+use Class::Tiny {
+    'exception_verbosity' => 0,
+    'algorithms' => [ "SHA-1" ],
+    'files' => [ ],
+};
 
 
 
-# Decode string in system locale encoding to internal UTF-8 representation.
-# args
-#   string possibly needing conversion
-# returns
-#   converted string if conversion was necessary or
-#   original value if no string passed or conversion was not necessary
-sub decode_locale_if_necessary {
+# Constructor hook validates parameters.
+sub BUILD {
 
-    my $s = shift @_;
+    my ($self, $args) = @_;
 
-    if (not ref($s) or ref($s) eq 'SCALAR') {
-        return decode(locale => $s) unless (Encode::is_utf8($s));
-    }
-
-    return $s;
+    $self->exception_verbosity($self->{'exception_verbosity'}) if (defined($self->{'exception_verbosity'}));
 
 }
 
@@ -44,15 +36,77 @@ sub decode_locale_if_necessary {
 # throws
 #   FSTreeIntegrityWatch::Exception::Configuration in case of an invalid
 #                                                  argument
-sub set_exception_verbosity {
+sub exception_verbosity {
 
-    my $value = shift @_;
+    my $self = shift @_;
 
-    if ($value =~ /^[10]$/) {
-        $FSTreeIntegrityWatch::Exception::exception_verbosity = $value;
+    if (@_) {
+
+        my $value = shift @_;
+
+        if ($value =~ /^[10]$/) {
+            $FSTreeIntegrityWatch::Exception::exception_verbosity = $value;
+            return $self->{'exception_verbosity'} = $value;
+        } else {
+            my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+            $self->{'exception_verbosity'} = $defaults->{'exception_verbosity'};
+            $self->exp('Config', "Invalid parameter, use '0' or '1'.");
+        }
+
+    } elsif ( exists $self->{'exception_verbosity'} ) {
+
+        return $self->{'exception_verbosity'};
+
     } else {
-        config_error("Invalid parameter, use '0' or '1'.");
+
+        my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+        return $self->{'exception_verbosity'} = $defaults->{'exception_verbosity'};
+
     }
+
+}
+
+# Throw some of the FSTreeIntegrityWatch::Exception exceptions following
+# exception verbosity setting.
+# args
+#   exception type, i.e. FSTreeIntegrityWatch::Exception::$type
+#     or undef to throw generic FSTreeIntegrityWatch::Exception.
+#   exception throw() arguments
+sub exp {
+
+    my $self = shift @_;
+    my $type = shift @_;
+    my @args = @_;
+
+    # If only one argument is given it is an error message.
+    @args = ('message' => $args[0]) if (scalar(@args) == 1);
+    # Force the use of our show stack trace setting.
+    push(@args, show_trace => $self->exception_verbosity());
+
+    # Throw exception of requested type.
+    my $class = 'FSTreeIntegrityWatch::Exception'.(defined($type) ? "::$type" : '');
+
+    $class->throw(@args);
+
+}
+
+sub store_checksums {
+
+    my $self = shift @_;
+
+    my $results = {};
+
+    foreach my $file (@{$self->files()}) {
+        foreach my $alg (@{$self->algorithms()}) {
+            my $attr = $alg;
+            my $checksum = get_file_checksum($alg, $file);
+            store_file_checksum($file, $attr, $checksum);
+            $results->{$file}->{$alg}->{'checksum'} = $checksum;
+            $results->{$file}->{$alg}->{'attr_name'} = $alg;
+        }
+    }
+
+    return $results;
 
 }
 

@@ -20,7 +20,7 @@ our %EXPORT_TAGS = (
 
 
 # Package modules
-use FSTreeIntegrityWatch qw(decode_locale_if_necessary);
+use FSTreeIntegrityWatch::Tools qw(decode_locale_if_necessary);
 use FSTreeIntegrityWatch::Exception qw(:all);
 
 # External modules

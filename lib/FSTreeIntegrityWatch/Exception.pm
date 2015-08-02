@@ -34,7 +34,7 @@ use Exception::Class (
         'description' => 'generic base class for all FSTreeIntegrityWatch exceptions',
     },
 
-    'FSTreeIntegrityWatch::Exception::Configuration' => {
+    'FSTreeIntegrityWatch::Exception::Config' => {
         'alias'       => 'config_error',
         'isa'         => 'FSTreeIntegrityWatch::Exception',
         'description' => 'improper FSTreeIntegrityWatch module configuration',
