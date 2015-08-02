@@ -15,6 +15,7 @@ our @EXPORT_OK = qw(
     general_error
     config_error
     digest_error
+    extattr_error
 );
 our %EXPORT_TAGS = (
     all => [ @EXPORT_OK ],

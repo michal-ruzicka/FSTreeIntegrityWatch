@@ -34,8 +34,8 @@ use Try::Tiny;
 #   name of the extended attribute the checksum to store to
 #   checksum to store
 # returns
-#   1 on success
-#   undef otherwise.
+#   true on success
+#   false otherwise.
 # throws
 #   FSTreeIntegrityWatch::Exception::ExtAttr in case of any error
 sub store_file_checksum {
@@ -55,12 +55,8 @@ sub store_file_checksum {
     }
 
     extattr_error($err) if (defined($err));
-    try {
-        setfattr($filename, $attrname, $checksum);
-        $rv = 1;
-    } catch {
-        extattr_error("Faild to store checksum '$checksum' to file '$filename' in extended attribute '$attrname':".$!);
-    };
+    $rv = setfattr($filename, $attrname, $checksum)
+        or extattr_error("Failed to store checksum '$checksum' to file '$filename' in extended attribute '$attrname': ".$!);
 
     return $rv;
 
