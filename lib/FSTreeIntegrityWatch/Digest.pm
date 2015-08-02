@@ -20,6 +20,7 @@ our %EXPORT_TAGS = (
 
 
 # Package modules
+use FSTreeIntegrityWatch qw(decode_locale_if_necessary);
 use FSTreeIntegrityWatch::Exception qw(:all);
 
 # External modules
@@ -57,7 +58,7 @@ sub get_file_checksum {
         my $checksumer = Digest->new("$alg", 'b');
         $rv = $checksumer->addfile($filename)->hexdigest;
     } catch {
-        digest_error("Digest computation using '$alg' algorithm failed.\n".$_);
+        digest_error("Digest computation using '$alg' algorithm failed.\n".decode_locale_if_necessary($_));
     };
 
     return $rv;

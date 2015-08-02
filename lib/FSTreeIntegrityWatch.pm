@@ -9,10 +9,34 @@ use utf8;
 # Public methods
 use Exporter 'import';
 our @EXPORT_OK = qw(
+    decode_locale_if_necessary
     set_exception_verbosity
 );
 
 
+# External modules
+use Encode;
+use Encode::Locale;
+
+
+
+# Decode string in system locale encoding to internal UTF-8 representation.
+# args
+#   string possibly needing conversion
+# returns
+#   converted string if conversion was necessary or
+#   original value if no string passed or conversion was not necessary
+sub decode_locale_if_necessary {
+
+    my $s = shift @_;
+
+    if (not ref($s) or ref($s) eq 'SCALAR') {
+        return decode(locale => $s) unless (Encode::is_utf8($s));
+    }
+
+    return $s;
+
+}
 
 # Enable/disable stack trace as part of the standard exception error message.
 # args

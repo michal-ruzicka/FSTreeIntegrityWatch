@@ -20,6 +20,7 @@ our %EXPORT_TAGS = (
 
 
 # Package modules
+use FSTreeIntegrityWatch qw(decode_locale_if_necessary);
 use FSTreeIntegrityWatch::Exception qw(:all);
 
 # External modules
@@ -56,7 +57,7 @@ sub store_file_checksum {
 
     extattr_error($err) if (defined($err));
     $rv = setfattr($filename, $attrname, $checksum)
-        or extattr_error("Failed to store checksum '$checksum' to file '$filename' in extended attribute '$attrname': ".$!);
+        or extattr_error("Failed to store checksum '$checksum' to file '$filename' in extended attribute '$attrname': ".decode_locale_if_necessary($!));
 
     return $rv;
 

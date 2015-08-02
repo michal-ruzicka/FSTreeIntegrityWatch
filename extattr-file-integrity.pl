@@ -4,9 +4,19 @@ use strict;
 use warnings;
 use utf8;
 
-binmode(STDIN,  "utf8");
-binmode(STDOUT, "utf8");
-binmode(STDERR, "utf8");
+# Set encoding translation according to system locale.
+use Encode;
+use Encode::Locale;
+if (-t) {
+    binmode(STDIN,  ":encoding(console_in)");
+    binmode(STDOUT, ":encoding(console_out)");
+    binmode(STDERR, ":encoding(console_out)");
+} else {
+    binmode(STDIN,  ":encoding(locale)");
+    binmode(STDOUT, ":encoding(locale)");
+    binmode(STDERR, ":encoding(locale)");
+}
+Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
@@ -16,7 +26,7 @@ use Try::Tiny;
 # FSTreeIntegrityWatch package modules
 use FindBin;
 use lib "$FindBin::Bin/lib/";
-use FSTreeIntegrityWatch qw(set_exception_verbosity);
+use FSTreeIntegrityWatch qw(decode_locale_if_necessary set_exception_verbosity);
 use FSTreeIntegrityWatch::Digest qw(:standard);
 use FSTreeIntegrityWatch::ExtAttr qw(:standard);
 
