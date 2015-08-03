@@ -7,16 +7,20 @@ use utf8;
 
 
 # Package modules
-use FSTreeIntegrityWatch::Digest qw(:standard);
-use FSTreeIntegrityWatch::ExtAttr qw(:standard);
+use FSTreeIntegrityWatch::Digest;
+use FSTreeIntegrityWatch::Exception;
+use FSTreeIntegrityWatch::ExtAttr;
 
 
 # Use Class::Tiny for class construction.
 use subs 'exception_verbosity'; # Necessary to provide our own accessor.
 use Class::Tiny {
-    'exception_verbosity' => 0,
-    'algorithms' => [ "SHA-1" ],
-    'files' => [ ],
+    'exception_verbosity'  => 0,
+    'ext_attr_name_prefix' => 'extattr-file-integrity',
+    'algorithms'           => [ "SHA-1" ],
+    'files'                => [ ],
+    'checksums'            => {},
+    'stored_ext_attrs'     => {},
 };
 
 
@@ -91,23 +95,9 @@ sub exp {
 }
 
 # For $self->files() computes their checksums using all the $self->algorithms()
-# and stores them to the extended attributes of the files.
+# and stores the results to the extended attributes of the files.
 # returns
-#   hash ref with results formatted as follows
-#   {
-#     'file/path1' => {
-#       'alg1' => {
-#         'checksum'  => 'checksum of file/path1 using alg1',
-#         'attr_name' => 'name of the used extended attribute',
-#       },
-#     },
-#     'file/path2' => {
-#       'alg2' => {
-#         'checksum'  => 'checksum of file/path2 using alg2',
-#         'attr_name' => 'name of the used extended attribute',
-#       },
-#     },
-#   }
+#   stored_ext_attrs hash ref of the used context
 # throws
 #   FSTreeIntegrityWatch::Exception or their subclasses in case of errors during
 #   processing.
@@ -115,19 +105,11 @@ sub store_checksums {
 
     my $self = shift @_;
 
-    my $results = {};
+    my $digest  = FSTreeIntegrityWatch::Digest->new($self);
+    my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
 
-    foreach my $file (@{$self->files()}) {
-        foreach my $alg (@{$self->algorithms()}) {
-            my $attr = $alg;
-            my $checksum = get_file_checksum($alg, $file);
-            store_file_checksum($file, $attr, $checksum);
-            $results->{$file}->{$alg}->{'checksum'} = $checksum;
-            $results->{$file}->{$alg}->{'attr_name'} = $alg;
-        }
-    }
-
-    return $results;
+    $digest->compute_checksums();
+    return $extattr->store_checksums();
 
 }
 

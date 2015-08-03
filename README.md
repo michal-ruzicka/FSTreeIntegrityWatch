@@ -7,13 +7,13 @@ Filesystem Extended Attributes File Integrity Tool
 Tool to store/check file integrity information in filesystem extended
 attributes.
 
-See 
+See
  * http://man7.org/linux/man-pages/man5/attr.5.html
 
 
 ### FSTreeIntegrityWatch::Digest
 
-The module loads `Digest::*` modules dynamically based on arbitrary algorithm 
+The module loads `Digest::*` modules dynamically based on arbitrary algorithm
 name provided by the caller. An exception is thrown if appropriate digest module 
 is not available in the system.
 
@@ -25,7 +25,7 @@ See
 
 The module uses `File::ExtAttr` module that depends on `libattr`.
 
-In case of `cpan File::ExtAttr` installation error your system possibly needs 
+In case of `cpan File::ExtAttr` installation error your system possibly needs
 `libattr-devel` packages to be installed.
 
 See
@@ -34,12 +34,22 @@ See
 
 ### Error Handling
 
-The module uses `FSTreeIntegrityWatch::Exception::*` exceptions to handles 
+The module uses `FSTreeIntegrityWatch::Exception::*` exceptions to handles
 errors. The system is base on `Exception::Class` modules.
 
 See
  * http://search.cpan.org/~drolsky/Exception-Class/lib/Exception/Class.pm
  * http://www.drdobbs.com/web-development/exception-handling-in-perl-with-exceptio/184416129
+
+
+### Object-Oriented Programming
+
+FSTreeIntegrityWatch modules construct objects using `Class::Tiny` minimalist
+class constructor module.
+
+See
+ * http://search.cpan.org/~dagolden/Class-Tiny/lib/Class/Tiny.pm
+ * http://perldoc.perl.org/perlootut.html
 
 
 

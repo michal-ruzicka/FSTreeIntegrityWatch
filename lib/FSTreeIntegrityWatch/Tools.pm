@@ -6,6 +6,11 @@ use warnings;
 use utf8;
 
 
+# External modules
+use Encode;
+use Encode::Locale;
+
+
 # Public methods
 use Exporter 'import';
 our @EXPORT_OK = qw(
@@ -17,11 +22,6 @@ our %EXPORT_TAGS = (
         decode_locale_if_necessary
     ) ],
 );
-
-
-# External modules
-use Encode;
-use Encode::Locale;
 
 
 

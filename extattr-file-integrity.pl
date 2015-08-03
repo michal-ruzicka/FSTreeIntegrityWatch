@@ -20,10 +20,11 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
+use Data::Dumper;
 use Scalar::Util qw(blessed);
 use Try::Tiny;
 
-# FSTreeIntegrityWatch package modules
+# Local FSTreeIntegrityWatch package modules
 use FindBin;
 use lib "$FindBin::Bin/lib/";
 use FSTreeIntegrityWatch;
@@ -33,34 +34,35 @@ use FSTreeIntegrityWatch;
 #
 # Global configuration
 #
-my $file = "$FindBin::Bin/testdata/data/file6";
-my $alg = 'SHA-1';
-my $attr = $alg;
+my @files = (
+    "$FindBin::Bin/testdata/data/dir2/file3",
+    "$FindBin::Bin/testdata/data/dir2/file4",
+    "$FindBin::Bin/testdata/data/file6",
+);
+my @algs = (
+    'SHA-1',
+    'SHA-512',
+);
 my $exception_verbosity = '1';
 
 
 #
 # Main
 #
-my $fstiw = FSTreeIntegrityWatch->new(
+my $intw = FSTreeIntegrityWatch->new(
     'exception_verbosity' => $exception_verbosity,
-    'algorithms' => [ "$alg" ],
-    'files' => [ "$file" ],
+    'algorithms' => [ @algs ],
+    'files' => [ @files ],
 );
 
-printf("%s: %s\n", 'exception_verbosity', $fstiw->exception_verbosity());
-printf("%s: %s\n", 'algorithms', join('; ', @{$fstiw->algorithms()}));
-printf("%s: %s\n", 'files', join('; ', @{$fstiw->files()}));
+printf("%s: %s\n", 'exception_verbosity', $intw->exception_verbosity());
+printf("%s: %s\n", 'algorithms', join('; ', @{$intw->algorithms()}));
+printf("%s: %s\n", 'files', join('; ', @{$intw->files()}));
 
 try {
-    my $results = $fstiw->store_checksums();
-    foreach my $file (sort keys %$results) {
-        foreach my $alg (sort keys %{$results->{$file}}) {
-            printf("Stored '%s' hash '%s' as the extended attribute '%s' at '%s'.\n",
-                    $alg, $results->{$file}->{$alg}->{'checksum'},
-                    $results->{$file}->{$alg}->{'attr_name'}, $file);
-        }
-    }
+    $intw->store_checksums();
+    print Dumper($intw->checksums());
+    print Dumper($intw->stored_ext_attrs());
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
         die "$_\n";
