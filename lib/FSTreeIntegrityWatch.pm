@@ -21,6 +21,7 @@ use Class::Tiny {
     'files'                => [ ],
     'checksums'            => {},
     'stored_ext_attrs'     => {},
+    'loaded_ext_attrs'     => {},
 };
 
 
@@ -110,6 +111,22 @@ sub store_checksums {
 
     $digest->compute_checksums();
     return $extattr->store_checksums();
+
+}
+
+# For $self->files() loads their saved checksums from the extended attributes.
+# returns
+#   loaded_ext_attrs hash ref of the used context
+# throws
+#   FSTreeIntegrityWatch::Exception or their subclasses in case of errors during
+#   processing.
+sub load_checksums {
+
+    my $self = shift @_;
+
+    my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
+
+    $extattr->load_checksums();
 
 }
 

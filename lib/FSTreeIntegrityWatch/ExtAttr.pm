@@ -70,14 +70,64 @@ sub store_checksums {
             setfattr($filename, $attr_name, $checksum)
                 or $self->context->exp('ExtAttr', "Failed to store checksum '$checksum' to file '$filename' in extended attribute '$attr_name': ".decode_locale_if_necessary($!));
 
-            $sa->{$filename}->{$alg}->{'stored_at'} = time;
-            $sa->{$filename}->{$alg}->{'attr_name'} = $attr_name;
+            $sa->{$filename}->{$alg}->{'stored_at'}  = time;
+            $sa->{$filename}->{$alg}->{'attr_name'}  = $attr_name;
             $sa->{$filename}->{$alg}->{'attr_value'} = $checksum;
 
         }
     }
 
     return $sa;
+
+}
+
+# Load checksums from extended attributes for all files in files array ref of
+# the instance's context.
+# returns
+#   loaded_ext_attrs hash ref of the instance's context
+# throws
+#   FSTreeIntegrityWatch::Exception::ExtAttr in case of any error
+sub load_checksums {
+
+    my $self = shift @_;
+
+    my $la        = $self->context->loaded_ext_attrs();
+    my $attr_pref = $self->context->ext_attr_name_prefix();
+
+    my $prefix_name_re = qr/^(\Q$attr_pref\E)\.(\S+)$/;
+
+    foreach my $filename (@{$self->context->files()}) {
+
+        my @ext_args = listfattr($filename)
+            or $self->context->exp('ExtAttr', "Failed to load list of extended attributes on file '$filename': ".decode_locale_if_necessary($!));
+
+        my @our_ext_args = grep(/$prefix_name_re/, @ext_args);
+
+        foreach my $attr (@our_ext_args) {
+
+            my $value = getfattr($filename, $attr)
+                or $self->context->exp('ExtAttr', "Failed to retrieve extended attribute '$attr' on file '$filename': ".decode_locale_if_necessary($!));
+
+            my ($prefix, $alg);
+            if ($attr =~ $prefix_name_re) {
+
+                ($prefix, $alg) = ($1, $2);
+
+                $la->{$filename}->{$alg}->{'loaded_at'}  = time;
+                $la->{$filename}->{$alg}->{'attr_name'}  = $attr;
+                $la->{$filename}->{$alg}->{'attr_value'} = $value;
+
+            } else {
+
+                $self->context->exp('ExtAttr', "Failed to extract algorithm name from extended attribute name '$attr'");
+
+            }
+
+        }
+
+    }
+
+    return $la;
 
 }
 

@@ -63,8 +63,7 @@ printf("%s: %s\n", 'files', join('; ', @{$intw->files()}));
 
 try {
     $intw->store_checksums();
-    print Dumper($intw->checksums());
-    print Dumper($intw->stored_ext_attrs());
+    $intw->load_checksums();
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
         die "$_\n";
@@ -72,6 +71,10 @@ try {
         die $_;
     }
 };
+
+print Dumper($intw->checksums());
+print Dumper($intw->stored_ext_attrs());
+print Dumper($intw->loaded_ext_attrs());
 
 
 # vim:textwidth=80:expandtab:tabstop=4:shiftwidth=4:fileencodings=utf8:spelllang=en
