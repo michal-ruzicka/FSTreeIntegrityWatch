@@ -90,6 +90,27 @@ sub exp {
 
 }
 
+# For $self->files() computes their checksums using all the $self->algorithms()
+# and stores them to the extended attributes of the files.
+# returns
+#   hash ref with results formatted as follows
+#   {
+#     'file/path1' => {
+#       'alg1' => {
+#         'checksum'  => 'checksum of file/path1 using alg1',
+#         'attr_name' => 'name of the used extended attribute',
+#       },
+#     },
+#     'file/path2' => {
+#       'alg2' => {
+#         'checksum'  => 'checksum of file/path2 using alg2',
+#         'attr_name' => 'name of the used extended attribute',
+#       },
+#     },
+#   }
+# throws
+#   FSTreeIntegrityWatch::Exception or their subclasses in case of errors during
+#   processing.
 sub store_checksums {
 
     my $self = shift @_;
