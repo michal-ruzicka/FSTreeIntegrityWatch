@@ -47,6 +47,9 @@ See
 FSTreeIntegrityWatch modules construct objects using `Class::Tiny` minimalist
 class constructor module.
 
+At least version 1.001 of the `Class::Tiny` module is required as older versions
+lack the BUILDARGS method some of the `FSTreeIntegrityWatch::*` modules use.
+
 See
  * http://search.cpan.org/~dagolden/Class-Tiny/lib/Class/Tiny.pm
  * http://perldoc.perl.org/perlootut.html

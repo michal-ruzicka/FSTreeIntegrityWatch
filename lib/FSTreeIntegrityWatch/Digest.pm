@@ -15,7 +15,7 @@ use Try::Tiny;
 
 
 # Use Class::Tiny for class construction.
-use Class::Tiny qw(context);
+use Class::Tiny 1.001 qw(context); # BUILDARGS method was introduced in version 1.001 of the module.
 
 
 
