@@ -61,8 +61,13 @@ sub compute_checksums {
             $self->context->exp('Digest', $err) if (defined($err));
             my ($checksumer, $checksum);
             try {
-                $checksumer = Digest->new("$alg", 'b');
-                $checksum = $checksumer->addfile($filename)->hexdigest;
+                $checksumer = Digest->new("$alg");
+                open (my $fh, '<', $filename)
+                    or $self->context->exp('Digest', "Can't open '$filename': ".decode_locale_if_necessary($!));
+                binmode ($fh);
+                $checksum = $checksumer->addfile($fh)->hexdigest;
+                close($fh)
+                    or $self->context->exp('Digest', "Can't close '$filename': ".decode_locale_if_necessary($!));
             } catch {
                 $self->context->exp('Digest', "Digest computation using '$alg' algorithm failed.\n".decode_locale_if_necessary($_));
             };

@@ -17,7 +17,7 @@ use subs 'exception_verbosity'; # Necessary to provide our own accessor.
 use Class::Tiny {
     'exception_verbosity'  => 0,
     'ext_attr_name_prefix' => 'extattr-file-integrity',
-    'algorithms'           => [ "SHA-1" ],
+    'algorithms'           => [ "SHA-256" ],
     'files'                => [ ],
     'checksums'            => {},
     'stored_ext_attrs'     => {},
