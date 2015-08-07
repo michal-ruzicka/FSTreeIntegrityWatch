@@ -21,6 +21,7 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 # External modules
 use Data::Dumper;
+use List::Util qw(sum);
 use Scalar::Util qw(blessed);
 use Try::Tiny;
 
@@ -136,12 +137,30 @@ my $intw = FSTreeIntegrityWatch->new(
 );
 
 printf("%s: %s\n", 'exception_verbosity', $intw->exception_verbosity());
-printf("%s: %s\n", 'algorithms', join('; ', @{$intw->algorithms()}));
-printf("%s: %s\n", 'files', join('; ', @{$intw->files()}));
+printf("%s:\n\t%s\n", 'algorithms', join("\n\t", @{$intw->algorithms()}));
+printf("%s:\n\t%s\n", "files", join("\n\t", @{$intw->files()}));
 
+my $rv = 0;
 try {
     $intw->store_checksums();
     $intw->load_checksums();
+    my $dfc = $intw->verify_checksums();
+    if (scalar(keys %$dfc) > 0) {
+        $rv = sum(map { exists($dfc->{$_}->{'error'}) ? 1 : 0 } keys %$dfc) > 0 ? 1 : 0;
+        foreach my $filename (sort keys %$dfc) {
+            foreach my $alg (sort keys %{$dfc->{$filename}->{'error'}}) {
+                my $ecsum = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'};
+                my $ccsum = $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'};
+                printf STDERR "File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' – current checkum '%s'\n",
+                              $filename, $alg, $ecsum, $ccsum;
+            }
+            foreach my $alg (sort keys %{$dfc->{$filename}->{'warning'}}) {
+                my $msg = $dfc->{$filename}->{'warning'}->{$alg}->{'message'};
+                printf STDERR "File integrity verification warning: file '%s' – %s\n",
+                              $filename, $msg;
+            }
+        }
+    }
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
         die "$_\n";
@@ -153,6 +172,9 @@ try {
 print Dumper($intw->checksums());
 print Dumper($intw->stored_ext_attrs());
 print Dumper($intw->loaded_ext_attrs());
+print Dumper($intw->detected_file_corruption());
+
+exit($rv);
 
 
 # vim:textwidth=80:expandtab:tabstop=4:shiftwidth=4:fileencodings=utf8:spelllang=en

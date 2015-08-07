@@ -397,7 +397,7 @@ sub compute_checksums {
             };
 
             $cs->{$filename}->{$alg}->{'checksum_value'} = $checksum;
-            $cs->{$filename}->{$alg}->{'checksum_time'} = time;
+            $cs->{$filename}->{$alg}->{'computed_at'} = time;
 
         }
     }
