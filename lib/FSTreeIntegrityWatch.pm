@@ -126,7 +126,7 @@ sub load_checksums {
 
     my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
 
-    $extattr->load_checksums();
+    return $extattr->load_checksums();
 
 }
 
