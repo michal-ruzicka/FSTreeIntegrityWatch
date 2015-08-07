@@ -114,8 +114,8 @@ sub load_checksums {
 
         foreach my $attr (@our_ext_args) {
 
-            my $value = getfattr($filename, $attr)
-                or $self->context->exp('ExtAttr', "Failed to retrieve extended attribute '$attr' on file '$filename': ".decode_locale_if_necessary($!));
+            my $value = getfattr($filename, $attr);
+            $self->context->exp('ExtAttr', "Failed to retrieve extended attribute '$attr' on file '$filename': ".decode_locale_if_necessary($!)) unless(defined($value));
 
             my ($prefix, $alg);
             if ($attr =~ $prefix_name_re) {
