@@ -63,10 +63,10 @@ sub store_checksums {
             } else {
                 $err = "'$filename' is not a writable file.";
             }
+            $self->context->exp('ExtAttr', $err) if (defined($err));
 
             my $attr_name = sprintf("%s.%s", $attr_pref, $alg);
 
-            $self->context->exp('ExtAttr', $err) if (defined($err));
             setfattr($filename, $attr_name, $checksum)
                 or $self->context->exp('ExtAttr', "Failed to store checksum '$checksum' to file '$filename' in extended attribute '$attr_name': ".decode_locale_if_necessary($!));
 
@@ -98,8 +98,17 @@ sub load_checksums {
 
     foreach my $filename (@{$self->context->files()}) {
 
-        my @ext_args = listfattr($filename)
-            or $self->context->exp('ExtAttr', "Failed to load list of extended attributes on file '$filename': ".decode_locale_if_necessary($!));
+        my $err = undef;
+        if (not defined($filename)) {
+            $err = "No filename specified.";
+        }
+        unless (-e $filename and -f $filename and -r $filename) {
+            $err = "'$filename' is not a readable file.";
+        }
+        $self->context->exp('ExtAttr', $err) if (defined($err));
+
+        my @ext_args = listfattr($filename);
+        $self->context->exp('ExtAttr', "Failed to load list of extended attributes on file '$filename': ".decode_locale_if_necessary($!)) if (scalar(@ext_args) == 1 and not defined($ext_args[0]));
 
         my @our_ext_args = grep(/$prefix_name_re/, @ext_args);
 
