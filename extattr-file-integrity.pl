@@ -20,7 +20,7 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
-use Data::Dumper;
+use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
 use List::Util qw(sum);
 use Scalar::Util qw(blessed);
 use Try::Tiny;
@@ -35,132 +35,111 @@ use FSTreeIntegrityWatch;
 #
 # Global configuration
 #
-my @files = (
-    "$FindBin::Bin/testdata/data/dir2/file3",
-    "$FindBin::Bin/testdata/data/dir2/file4",
-    "$FindBin::Bin/testdata/data/file6",
+my @files = ();
+my $opts = {
+    'verbose' => 1,
+    'ext-attr-prefix' => 'extattr-file-integrity',
+    'verify' => 1,
+};
+my @opts_def = (
+    'help|h',
+    'verbose|v!',
+    'algorithm|a=s@',
+    'ext-attr-prefix|prefix|p=s',
+    'store|save|s' => sub {$opts->{'verify'} = 0},
+    'verify',
 );
-my @algs = (
-    'Adler32',
-    'BLAKE-224',
-    'BLAKE-256',
-    'BLAKE-384',
-    'BLAKE-512',
-    'BLAKE2',
-    'BMW-224',
-    'BMW-256',
-    'BMW-384',
-    'BMW-512',
-    'CRC-8',
-    'CRC-16',
-    'CRC-32',
-    'CRC-64',
-    'CRC-CCITT',
-    'CRC-OpenPGP-Armor',
-    'ECHO-224',
-    'ECHO-256',
-    'ECHO-384',
-    'ECHO-512',
-    'ED2K',
-    'EdonR-224',
-    'EdonR-256',
-    'EdonR-384',
-    'EdonR-512',
-    'Fugue-224',
-    'Fugue-256',
-    'Fugue-384',
-    'Fugue-512',
-    'GOST',
-    'Groestl-224',
-    'Groestl-256',
-    'Groestl-384',
-    'Groestl-512',
-    'Hamsi-224',
-    'Hamsi-256',
-    'Hamsi-384',
-    'Hamsi-512',
-    'JH-224',
-    'JH-256',
-    'JH-384',
-    'JH-512',
-    'Keccak-224',
-    'Keccak-256',
-    'Keccak-384',
-    'Keccak-512',
-    'Luffa-224',
-    'Luffa-256',
-    'Luffa-384',
-    'Luffa-512',
-    'MD2',
-    'MD4',
-    'MD5',
-    'SHA-1',
-    'SHA-224',
-    'SHA-256',
-    'SHA-384',
-    'SHA-512',
-    'SHA3-224',
-    'SHA3-256',
-    'SHA3-384',
-    'SHA3-512',
-    'SHA3-SHAKE128',
-    'SHA3-SHAKE256',
-    'SHAvite3-224',
-    'SHAvite3-256',
-    'SHAvite3-384',
-    'SHAvite3-512',
-    'SIMD-224',
-    'SIMD-256',
-    'SIMD-384',
-    'SIMD-512',
-    'Shabal-224',
-    'Shabal-256',
-    'Shabal-384',
-    'Shabal-512',
-    'Skein-256',
-    'Skein-512',
-    'Skein-1024',
-    'Whirlpool',
-);
-my $ext_attr_name_prefix = 'test-ext-attr-prefix';
-my $exception_verbosity = '1';
+
+
+#
+# Subroutines
+#
+
+# Print script usage and exit.
+# args
+#   optional: exit value
+#   optional: error message
+sub print_usage_and_exit {
+
+    my ($exit_val, $msg) = @_;
+
+    $exit_val = 0 unless(defined($exit_val));
+    my $out = \*STDERR;
+
+    if (defined($msg)) {
+        chomp $msg;
+        print $out "$msg\n\n";
+    }
+
+    print $out  join("\n\t", 'Usage:',
+                join(' ',
+                     "$FindBin::Script",
+                     "[ { --verify | --store|--save|-s } ]",
+                     "[ --[no-]verbose|-v ]",
+                     "[ --algorithm|-a hash_algorithm_name [ --algorithm|-a hash_algorithm_name ... ] ]",
+                     "[ --ext-attr-prefix|--prefix|-p ext_attr_name_prefix ]",
+                     "file [ file ... ]"
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "[--help|-h]",
+                ))."\n";
+    print $out  join("\n\t", 'Example:',
+                join(' ',
+                     "$FindBin::Script",
+                     "--save",
+                     "-a SHA-256",
+                     "-a CRC-64",
+                     "testdata/data/dir1/file2",
+                     "testdata/data/file6",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "-a SHA-256",
+                     "testdata/data/file6",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--verify",
+                     "-v",
+                     "--prefix 'file-integrity'",
+                     "-a SHA-256",
+                     "--algorithm Whirlpool",
+                     "-a CRC-64",
+                     "testdata/data/dir1/file2",
+                     "testdata/data/file6",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--help",
+                ))."\n";
+
+    print $out "\n".join("\n\t", 'Valid hash algorithms:',
+                        join(' ', sort keys %{FSTreeIntegrityWatch::Digest->algorithms()})
+                    )."\n";
+
+
+    exit($exit_val);
+
+}
+
+# Check validity of provided arguments. In case of an error exit with help
+# message.
+sub check_options {
+    print_usage_and_exit() if ($opts->{'help'});
+    print_usage_and_exit(2, 'No files to work on.') unless (scalar(@files) > 0);
+}
+
 
 
 #
 # Main
 #
-my $intw = FSTreeIntegrityWatch->new(
-    'exception_verbosity'  => $exception_verbosity,
-    'ext_attr_name_prefix' => $ext_attr_name_prefix,
-    'algorithms'           => [ @algs ],
-    'files'                => [ @files ],
-);
-
-printf("%s: %s\n", 'exception_verbosity', $intw->exception_verbosity());
-printf("%s:\n\t%s\n", 'algorithms', join("\n\t", @{$intw->algorithms()}));
-printf("%s:\n\t%s\n", "files", join("\n\t", @{$intw->files()}));
-
-my $rv = 0;
 try {
-    $intw->store_checksums();
-    $intw->load_checksums();
-    my $dfc = $intw->verify_checksums();
-    if (scalar(keys %$dfc) > 0) {
-        $rv = sum(map { exists($dfc->{$_}->{'error'}) ? 1 : 0 } keys %$dfc) > 0 ? 1 : 0;
-        foreach my $filename (sort keys %$dfc) {
-            foreach my $alg (sort keys %{$dfc->{$filename}->{'error'}}) {
-                my $ecsum = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'};
-                my $ccsum = $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'};
-                printf STDERR "File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' – current checkum '%s'\n",
-                              $filename, $alg, $ecsum, $ccsum;
-            }
-            foreach my $alg (sort keys %{$dfc->{$filename}->{'warning'}}) {
-                my $msg = $dfc->{$filename}->{'warning'}->{$alg}->{'message'};
-                printf STDERR "File integrity verification warning: file '%s' – %s\n",
-                              $filename, $msg;
-            }
-        }
-    }
+    GetOptions ($opts, @opts_def)
+        or print_usage_and_exit(1, "Error in command line arguments");
+    @files = @ARGV;
+    check_options();
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
         die "$_\n";
@@ -169,10 +148,46 @@ try {
     }
 };
 
-print Dumper($intw->checksums());
-print Dumper($intw->stored_ext_attrs());
-print Dumper($intw->loaded_ext_attrs());
-print Dumper($intw->detected_file_corruption());
+my $intw = FSTreeIntegrityWatch->new(
+    'exception_verbosity'  => $opts->{'verbose'},
+    'ext_attr_name_prefix' => $opts->{'ext-attr-prefix'},
+    'files'                => [ @files ],
+);
+$intw->algorithms($opts->{'algorithm'}) if (defined($opts->{'algorithm'}));
+
+my $rv = 0;
+try {
+    # Mode of operation – verify existing saved checksums or save the current
+    # state?
+    if ($opts->{'verify'}) {
+        my $dfc = $intw->verify_checksums();
+        if (scalar(keys %$dfc) > 0) {
+            # Exit with error exit code only in case of error, warning are OK.
+            $rv = sum(map { exists($dfc->{$_}->{'error'}) ? 1 : 0 } keys %$dfc) > 0 ? 1 : 0;
+            foreach my $filename (sort keys %$dfc) {
+                foreach my $alg (sort keys %{$dfc->{$filename}->{'error'}}) {
+                    my $ecsum = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'};
+                    my $ccsum = $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'};
+                    printf STDERR "File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' – current checkum '%s'\n",
+                                  $filename, $alg, $ecsum, $ccsum;
+                }
+                foreach my $alg (sort keys %{$dfc->{$filename}->{'warning'}}) {
+                    my $msg = $dfc->{$filename}->{'warning'}->{$alg}->{'message'};
+                    printf STDERR "File integrity verification warning: file '%s' – %s\n",
+                                  $filename, $msg;
+                }
+            }
+        }
+    } else {
+        $intw->store_checksums();
+    }
+} catch {
+    if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
+        die "$_\n";
+    } else {
+        die $_;
+    }
+};
 
 exit($rv);
 
