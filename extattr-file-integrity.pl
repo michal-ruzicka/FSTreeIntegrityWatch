@@ -37,11 +37,15 @@ use FSTreeIntegrityWatch;
 #
 my @files = ();
 my $opts = {
+    'stdin' => 0,
+    'null' => 0,
     'verify' => 1,
     'ext-attr-prefix' => 'extattr-file-integrity',
     'verbose' => 1,
 };
 my @opts_def = (
+    '' => sub {$opts->{'stdin'} = 1},
+    'null|0',
     'verify',
     'store|save|s' => sub {$opts->{'verify'} = 0},
     'algorithm|a=s@',
@@ -83,7 +87,8 @@ sub print_usage_and_exit {
                      "[ { --verbose|-v [ --verbose|-v ... ] | --quiet|-q } ]",
                      "[ --algorithm|-a hash_algorithm_name [ --algorithm|-a hash_algorithm_name ... ] ]",
                      "[ --ext-attr-prefix|--prefix|-p ext_attr_name_prefix ]",
-                     "file [ file ... ]",
+                     "--",
+                     "{ - | file [ file ... ] }",
                 ),
                 join(' ',
                      "$FindBin::Script",
@@ -97,6 +102,7 @@ sub print_usage_and_exit {
                      "--verbose",
                      "-a SHA-256",
                      "-a CRC-64",
+                     "--",
                      "testdata/data/dir1/file2",
                      "testdata/data/file6",
                 ),
@@ -122,6 +128,18 @@ sub print_usage_and_exit {
                 ),
             ),
             join("\n\t", 'Options:',
+                join("\t\n\t\t",
+                     "{ - | file [ file ... ] }",
+                     "List of file paths to work on.",
+                     "If dash (`-') is used instead of file path, file paths will be read from the standard input in addition."),
+                join("\t\n\t\t",
+                     "-0, --null",
+                     "If dash (`-') argument is used to read file paths from the standard input this option changes the file paths separator from the new line characted to the NULL byte.",
+                     "Useful for handling `find some/path/ -print0' outputs."),
+                join("\t\n\t\t",
+                     "--",
+                     "`End of options' indicator.",
+                     "Any argument after will not be consider a configuration option even though it looks like one."),
                 join("\t\n\t\t",
                      "--verify",
                      "Integrity verification mode – load checksums from the extended attributes of files and compare them with newly computed checksums on the files.",
@@ -185,10 +203,27 @@ sub check_options {
 
 # Check and process command line options.
 try {
+
+    # Parse command line.
     GetOptions ($opts, @opts_def)
         or print_usage_and_exit(1, "Error in command line arguments");
-    @files = @ARGV;
+
+    @files = @ARGV; # Use file paths from the command line.
+    if ($opts->{'stdin'}) { # Use file paths from STDIN in configured.
+        my $orig_separator = $/;
+        # Allow NULL separated strings if configured – useful for handling `find
+        # some/dir/ -print0' outputs.
+        $/ = "\0" if ($opts->{'null'});
+        while (my $fp = <STDIN>) {
+            chomp $fp;
+            push(@files, $fp);
+        }
+        $/ = $orig_separator;
+    }
+
+    # Check the configuration.
     check_options();
+
 } catch {
     if ( blessed $_ && $_->isa('FSTreeIntegrityWatch::Exception') ) {
         die "$_\n";
