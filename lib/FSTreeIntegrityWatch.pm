@@ -12,14 +12,17 @@ use FSTreeIntegrityWatch::Exception;
 use FSTreeIntegrityWatch::ExtAttr;
 
 # External modules
+use feature qw(say);
 use List::Compare;
 use Try::Tiny;
 
 
 # Use Class::Tiny for class construction.
 use subs 'exception_verbosity'; # Necessary to provide our own accessor.
+use subs 'verbosity'; # Necessary to provide our own accessor.
 use Class::Tiny {
     'exception_verbosity'      => 0,
+    'verbosity'                => 0,
     'ext_attr_name_prefix'     => 'extattr-file-integrity',
     'algorithms'               => [ "SHA-256" ],
     'files'                    => [ ],
@@ -37,6 +40,7 @@ sub BUILD {
     my ($self, $args) = @_;
 
     $self->exception_verbosity($self->{'exception_verbosity'}) if (defined($self->{'exception_verbosity'}));
+    $self->verbosity($self->{'verbosity'}) if (defined($self->{'verbosity'}));
 
 }
 
@@ -54,13 +58,13 @@ sub exception_verbosity {
 
         my $value = shift @_;
 
-        if ($value =~ /^[10]$/) {
+        if ($value =~ /^[0-1]$/) {
             $FSTreeIntegrityWatch::Exception::exception_verbosity = $value;
             return $self->{'exception_verbosity'} = $value;
         } else {
             my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
             $self->{'exception_verbosity'} = $defaults->{'exception_verbosity'};
-            $self->exp('Config', "Invalid parameter, use '0' or '1'.");
+            $self->exp('Config', "Invalid exception verbosity configuration value, use '0' or '1'.");
         }
 
     } elsif ( exists $self->{'exception_verbosity'} ) {
@@ -71,6 +75,43 @@ sub exception_verbosity {
 
         my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
         return $self->{'exception_verbosity'} = $defaults->{'exception_verbosity'};
+
+    }
+
+}
+
+# Set verbosity of info prints during processing.
+# args
+#   int >= 0 set verbosity level
+#     level 0 (default): no printing, exceptions with included error messages are thrown
+#     level 1: in addition print processing info messages
+# throws
+#   FSTreeIntegrityWatch::Exception::Configuration in case of an invalid
+#                                                  argument
+sub verbosity {
+
+    my $self = shift @_;
+
+    if (@_) {
+
+        my $value = shift @_;
+
+        if ($value =~ /^[0-1]$/) {
+            return $self->{'verbosity'} = $value;
+        } else {
+            my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+            $self->{'verbosity'} = $defaults->{'verbosity'};
+            $self->exp('Config', "Invalid verbosity configuration value, use '0' or '1'.");
+        }
+
+    } elsif ( exists $self->{'verbosity'} ) {
+
+        return $self->{'verbosity'};
+
+    } else {
+
+        my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+        return $self->{'verbosity'} = $defaults->{'verbosity'};
 
     }
 
@@ -100,6 +141,21 @@ sub exp {
 
 }
 
+# Print processing info message if the current verbosity level instructs us to
+# do so.
+# args
+#   message to print
+sub print_info {
+
+    my $self = shift @_;
+    my $msg = shift @_;
+
+    chomp $msg;
+
+    say "$msg" if ($self->verbosity >= 1);
+
+}
+
 # For $self->files() computes their checksums using all the $self->algorithms()
 # and stores the results to the extended attributes of the files.
 # returns
@@ -110,6 +166,8 @@ sub exp {
 sub store_checksums {
 
     my $self = shift @_;
+
+    $self->print_info("Storing checksums...");
 
     my $digest  = FSTreeIntegrityWatch::Digest->new($self);
     my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
@@ -129,6 +187,8 @@ sub load_checksums {
 
     my $self = shift @_;
 
+    $self->print_info("Loading checksums...");
+
     my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
 
     return $extattr->load_checksums();
@@ -146,6 +206,8 @@ sub load_checksums {
 sub verify_checksums {
 
     my $self = shift @_;
+
+    $self->print_info("Verifying checksums...");
 
     my $dfc = $self->detected_file_corruption();
 
@@ -169,6 +231,7 @@ sub verify_checksums {
         my @used_algorithms = $lc->get_intersection();
         my $digest_ctx = FSTreeIntegrityWatch->new(
             'exception_verbosity'  => $self->exception_verbosity(),
+            'verbosity'            => $self->verbosity(),
             'ext_attr_name_prefix' => $self->ext_attr_name_prefix(),
             'files'                => [ @used_files ],
             'algorithms'           => [ @used_algorithms ],

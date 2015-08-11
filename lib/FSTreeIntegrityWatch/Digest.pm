@@ -383,6 +383,8 @@ sub compute_checksums {
             }
             $self->context->exp('Digest', $err) if (defined($err));
 
+            $self->context->print_info("computing '$alg' checksum on '$filename'");
+
             my $checksum = undef;
             try {
                 if (exists($self->algorithms->{$alg})) {

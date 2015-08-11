@@ -67,6 +67,7 @@ sub store_checksums {
 
             my $attr_name = sprintf("%s.%s", $attr_pref, $alg);
 
+            $self->context->print_info("storing '$alg' checksum '$checksum' to extended attribute '$attr_name' on '$filename'");
             setfattr($filename, $attr_name, $checksum)
                 or $self->context->exp('ExtAttr', "Failed to store checksum '$checksum' to file '$filename' in extended attribute '$attr_name': ".decode_locale_if_necessary($!));
 
@@ -113,6 +114,8 @@ sub load_checksums {
         my @our_ext_args = grep(/$prefix_name_re/, @ext_args);
 
         foreach my $attr (@our_ext_args) {
+
+            $self->context->print_info("loading checksum from extended attribute '$attr' on '$filename'");
 
             my $value = getfattr($filename, $attr);
             $self->context->exp('ExtAttr', "Failed to retrieve extended attribute '$attr' on file '$filename': ".decode_locale_if_necessary($!)) unless(defined($value));
