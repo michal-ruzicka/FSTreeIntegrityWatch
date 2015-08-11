@@ -199,7 +199,15 @@ try {
 
 # Print internal configuration state in the very verbose mode.
 if ($opts->{'verbose'} >= 4) {
-    print STDERR join("\n\t", 'Options:', map { sprintf("'%s': '%s'", $_, $opts->{$_}) } sort keys %$opts)."\n";
+    print STDERR join("\n\t",
+                      'Options:',
+                      map {
+                          sprintf("'%s': '%s'",
+                                  $_,
+                                  ref ($opts->{$_}) eq 'ARRAY'
+                                    ? join(', ', @{$opts->{$_}})
+                                      : $opts->{$_})
+                      } sort keys %$opts)."\n";
     print STDERR join("\n\t", 'Files:', @files)."\n";
     print STDERR "\n";
 }
