@@ -14,12 +14,14 @@ use FSTreeIntegrityWatch::ExtAttr;
 # External modules
 use feature qw(say);
 use List::Compare;
+use List::MoreUtils qw(uniq);
 use Try::Tiny;
 
 
 # Use Class::Tiny for class construction.
-use subs 'exception_verbosity'; # Necessary to provide our own accessor.
-use subs 'verbosity'; # Necessary to provide our own accessor.
+use subs 'exception_verbosity'; # Necessary to provide our own 'exception_verbosity' accessor.
+use subs 'verbosity'; # Necessary to provide our own 'verbosity' accessor.
+use subs 'files'; # Necessary to provide our own 'files' accessor.
 use Class::Tiny {
     'exception_verbosity'      => 0,
     'verbosity'                => 0,
@@ -41,6 +43,7 @@ sub BUILD {
 
     $self->exception_verbosity($self->{'exception_verbosity'}) if (defined($self->{'exception_verbosity'}));
     $self->verbosity($self->{'verbosity'}) if (defined($self->{'verbosity'}));
+    $self->files($self->{'files'}) if (defined($self->{'files'}));
 
 }
 
@@ -80,7 +83,7 @@ sub exception_verbosity {
 
 }
 
-# Set verbosity of info prints during processing.
+# Set/get verbosity of info prints during processing.
 # args
 #   int >= 0 set verbosity level
 #     level 0 (default): no printing, exceptions with included error messages are thrown
@@ -113,6 +116,35 @@ sub verbosity {
 
         my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
         return $self->{'verbosity'} = $defaults->{'verbosity'};
+
+    }
+
+}
+
+# Set/get list of files to work on. Duplicate entries are eliminated from the
+# list.
+# args
+#   array ref of file paths to work on
+sub files {
+
+    my $self = shift @_;
+
+    if (@_) {
+
+        my $files = shift @_;
+
+        @$files = uniq @$files;
+
+        return $self->{'files'} = $files;
+
+    } elsif ( exists $self->{'files'} ) {
+
+        return $self->{'files'};
+
+    } else {
+
+        my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+        return $self->{'files'} = $defaults->{'files'};
 
     }
 
