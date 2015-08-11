@@ -102,6 +102,9 @@ sub load_checksums {
         my $err = undef;
         if (not defined($filename)) {
             $err = "No filename specified.";
+        } elsif (-d $filename) {
+            $self->context->print_warning("'$filename' is a directory, skipping...");
+            next;
         }
         unless (-e $filename and -f $filename and -r $filename) {
             $err = "'$filename' is not a readable file.";

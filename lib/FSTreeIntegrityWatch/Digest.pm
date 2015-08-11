@@ -378,6 +378,9 @@ sub compute_checksums {
                 $err = "No filename specified.";
             } elsif (-e $filename and -f $filename and -r $filename) {
                 $err = "No digest algorithm specified." if (not defined($alg));
+            } elsif (-d $filename) {
+                $self->context->print_warning("'$filename' is a directory, skipping...");
+                next;
             } else {
                 $err = "'$filename' is not a readable file.";
             }
