@@ -84,7 +84,8 @@ sub exception_verbosity {
 # args
 #   int >= 0 set verbosity level
 #     level 0 (default): no printing, exceptions with included error messages are thrown
-#     level 1: in addition print processing info messages
+#     level 1: print processing warning and error messages
+#     level 2: in addition print processing info messages
 # throws
 #   FSTreeIntegrityWatch::Exception::Configuration in case of an invalid
 #                                                  argument
@@ -96,12 +97,12 @@ sub verbosity {
 
         my $value = shift @_;
 
-        if ($value =~ /^[0-1]$/) {
+        if ($value =~ /^[0-2]$/) {
             return $self->{'verbosity'} = $value;
         } else {
             my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
             $self->{'verbosity'} = $defaults->{'verbosity'};
-            $self->exp('Config', "Invalid verbosity configuration value, use '0' or '1'.");
+            $self->exp('Config', "Invalid verbosity configuration value, use integer between '0' and '2'.");
         }
 
     } elsif ( exists $self->{'verbosity'} ) {
@@ -141,6 +142,21 @@ sub exp {
 
 }
 
+# Print processing warning message if the current verbosity level instructs us
+# to do so.
+# args
+#   message to print
+sub print_warning {
+
+    my $self = shift @_;
+    my $msg = shift @_;
+
+    chomp $msg;
+
+    say STDERR "$msg" if ($self->verbosity >= 1);
+
+}
+
 # Print processing info message if the current verbosity level instructs us to
 # do so.
 # args
@@ -152,7 +168,7 @@ sub print_info {
 
     chomp $msg;
 
-    say "$msg" if ($self->verbosity >= 1);
+    say "$msg" if ($self->verbosity >= 2);
 
 }
 
@@ -173,7 +189,11 @@ sub store_checksums {
     my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
 
     $digest->compute_checksums();
-    return $extattr->store_checksums();
+    my $scsum = $extattr->store_checksums();
+
+    $self->print_info("Storing checksums done.");
+
+    return $scsum;
 
 }
 
@@ -190,8 +210,11 @@ sub load_checksums {
     $self->print_info("Loading checksums...");
 
     my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
+    my $lcsums = $extattr->load_checksums();
 
-    return $extattr->load_checksums();
+    $self->print_info("Loading checksums done.");
+
+    return $lcsums;
 
 }
 
@@ -267,6 +290,8 @@ sub verify_checksums {
     } catch {
         $self->exp(undef, "Verification of checksums failed: $_");
     };
+
+    $self->print_info("Verifying checksums done.");
 
     return $dfc;
 

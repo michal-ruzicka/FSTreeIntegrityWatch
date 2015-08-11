@@ -218,7 +218,7 @@ my $intw = FSTreeIntegrityWatch->new(
     'files'                => [ @files ],
 );
 $intw->algorithms($opts->{'algorithm'}) if (defined($opts->{'algorithm'}));
-$intw->verbosity(1) if ($opts->{'verbose'} >= 2);
+$intw->verbosity($opts->{'verbose'} > 2 ? 2 : $opts->{'verbose'});
 $intw->exception_verbosity(1) if ($opts->{'verbose'} >= 3);
 
 my $rv = 0;
