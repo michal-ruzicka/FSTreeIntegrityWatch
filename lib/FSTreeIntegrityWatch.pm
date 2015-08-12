@@ -13,6 +13,8 @@ use FSTreeIntegrityWatch::ExtAttr;
 
 # External modules
 use feature qw(say);
+use File::Find::utf8;
+use File::Spec;
 use List::Compare;
 use List::MoreUtils qw(uniq);
 use Try::Tiny;
@@ -22,12 +24,14 @@ use Try::Tiny;
 use subs 'exception_verbosity'; # Necessary to provide our own 'exception_verbosity' accessor.
 use subs 'verbosity'; # Necessary to provide our own 'verbosity' accessor.
 use subs 'files'; # Necessary to provide our own 'files' accessor.
+use subs 'recursive'; # Necessary to provide our own 'recursive' accessor.
 use Class::Tiny {
     'exception_verbosity'      => 0,
     'verbosity'                => 0,
     'ext_attr_name_prefix'     => 'extattr-file-integrity',
     'algorithms'               => [ "SHA-256" ],
     'files'                    => [ ],
+    'recursive'                => 0,
     'checksums'                => {},
     'stored_ext_attrs'         => {},
     'loaded_ext_attrs'         => {},
@@ -51,8 +55,7 @@ sub BUILD {
 # args
 #   1 or 0 (default) to enable/disable stack trace in exception error messages
 # throws
-#   FSTreeIntegrityWatch::Exception::Configuration in case of an invalid
-#                                                  argument
+#   FSTreeIntegrityWatch::Exception::Config in case of an invalid argument
 sub exception_verbosity {
 
     my $self = shift @_;
@@ -67,7 +70,7 @@ sub exception_verbosity {
         } else {
             my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
             $self->{'exception_verbosity'} = $defaults->{'exception_verbosity'};
-            $self->exp('Config', "Invalid exception verbosity configuration value, use '0' or '1'.");
+            $self->exp('Config', "Invalid 'exception_verbosity' configuration value, use '0' or '1'.");
         }
 
     } elsif ( exists $self->{'exception_verbosity'} ) {
@@ -90,8 +93,7 @@ sub exception_verbosity {
 #     level 1: print processing warning and error messages
 #     level 2: in addition print processing info messages
 # throws
-#   FSTreeIntegrityWatch::Exception::Configuration in case of an invalid
-#                                                  argument
+#   FSTreeIntegrityWatch::Exception::Config in case of an invalid argument
 sub verbosity {
 
     my $self = shift @_;
@@ -105,7 +107,7 @@ sub verbosity {
         } else {
             my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
             $self->{'verbosity'} = $defaults->{'verbosity'};
-            $self->exp('Config', "Invalid verbosity configuration value, use integer between '0' and '2'.");
+            $self->exp('Config', "Invalid 'verbosity' configuration value, use integer between '0' and '2'.");
         }
 
     } elsif ( exists $self->{'verbosity'} ) {
@@ -133,7 +135,25 @@ sub files {
 
         my $files = shift @_;
 
-        @$files = uniq @$files;
+        @$files = map { File::Spec->canonpath(File::Spec->rel2abs($_)) } @$files;
+
+        if ($self->{'recursive'}) {
+            my $find_dirs = [];
+            foreach my $f (@$files) {
+                push(@$find_dirs, $f) if (-d $f);
+            }
+            my $find_files = [];
+            find({ follow => 1,
+                   no_chdir => 1,
+                   wanted => sub {
+                       push(@$find_files,
+                            File::Spec->canonpath(File::Spec->rel2abs($File::Find::name)))
+                   }
+                 }, @$find_dirs) if (scalar(@$find_dirs) > 0);
+            push(@$files, @$find_files);
+        }
+
+        @$files = uniq sort @$files;
 
         return $self->{'files'} = $files;
 
@@ -145,6 +165,42 @@ sub files {
 
         my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
         return $self->{'files'} = $defaults->{'files'};
+
+    }
+
+}
+
+# Set/get directory behaviour.
+# args
+#   0 (default) to skip directories in the list of file path to work on or
+#   1 to traverse directories recursively and add found files to the list of
+#     file paths to work on
+# throws
+#   FSTreeIntegrityWatch::Exception::Config in case of an invalid argument
+sub recursive {
+
+    my $self = shift @_;
+
+    if (@_) {
+
+        my $value = shift @_;
+
+        if ($value =~ /^[01]$/) {
+            return $self->{'recursive'} = $value;
+        } else {
+            my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+            $self->{'recursive'} = $defaults->{'1rbosity'};
+            $self->exp('Config', "Invalid 'recursive' configuration value, use '0' or '1'.");
+        }
+
+    } elsif ( exists $self->{'recursive'} ) {
+
+        return $self->{'recursive'};
+
+    } else {
+
+        my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+        return $self->{'recursive'} = $defaults->{'recursive'};
 
     }
 

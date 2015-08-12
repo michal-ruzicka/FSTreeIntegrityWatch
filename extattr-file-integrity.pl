@@ -39,6 +39,7 @@ my @files = ();
 my $opts = {
     'stdin' => 0,
     'null' => 0,
+    'recursive' => 0,
     'verify' => 1,
     'ext-attr-prefix' => 'extattr-file-integrity',
     'verbose' => 1,
@@ -46,6 +47,7 @@ my $opts = {
 my @opts_def = (
     '' => sub {$opts->{'stdin'} = 1},
     'null|0',
+    'recursive|r!',
     'verify',
     'store|save|s' => sub {$opts->{'verify'} = 0},
     'algorithm|a=s@',
@@ -102,8 +104,9 @@ sub print_usage_and_exit {
                      "--verbose",
                      "-a SHA-256",
                      "-a CRC-64",
+                     "--recursive",
                      "--",
-                     "testdata/data/dir1/file2",
+                     "testdata/data/dir1/",
                      "testdata/data/file6",
                 ),
                 join(' ',
@@ -136,6 +139,10 @@ sub print_usage_and_exit {
                      "-0, --null",
                      "If dash (`-') argument is used to read file paths from the standard input this option changes the file paths separator from the new line characted to the NULL byte.",
                      "Useful for handling `find some/path/ -print0' outputs."),
+                join("\t\n\t\t",
+                     "-r, --[no-]recursive",
+                     "If enabled, directories in the file list will not be skiped but traversed recursively and found files will also be added to the list.",
+                     "Default is `--no-recursive'."),
                 join("\t\n\t\t",
                      "--",
                      "`End of options' indicator.",
@@ -232,6 +239,16 @@ try {
     }
 };
 
+# Setup FSTreeIntegrityWatch according to our configuration.
+my $intw = FSTreeIntegrityWatch->new(
+    'ext_attr_name_prefix' => $opts->{'ext-attr-prefix'},
+    'files'                => [ @files ],
+    'recursive'            => $opts->{'recursive'},
+);
+$intw->algorithms($opts->{'algorithm'}) if (defined($opts->{'algorithm'}));
+$intw->verbosity($opts->{'verbose'} > 2 ? 2 : $opts->{'verbose'});
+$intw->exception_verbosity(1) if ($opts->{'verbose'} >= 3);
+
 # Print internal configuration state in the very verbose mode.
 if ($opts->{'verbose'} >= 4) {
     print STDERR join("\n\t",
@@ -243,18 +260,10 @@ if ($opts->{'verbose'} >= 4) {
                                     ? join(', ', @{$opts->{$_}})
                                       : $opts->{$_})
                       } sort keys %$opts)."\n";
-    print STDERR join("\n\t", 'Files:', @files)."\n";
+    print STDERR join("\n\t", 'File paths entered by the user:', sort @files)."\n";
+    print STDERR join("\n\t", 'File paths to work with:', sort @{$intw->files()})."\n";
     print STDERR "\n";
 }
-
-# Setup FSTreeIntegrityWatch according to our configuration.
-my $intw = FSTreeIntegrityWatch->new(
-    'ext_attr_name_prefix' => $opts->{'ext-attr-prefix'},
-    'files'                => [ @files ],
-);
-$intw->algorithms($opts->{'algorithm'}) if (defined($opts->{'algorithm'}));
-$intw->verbosity($opts->{'verbose'} > 2 ? 2 : $opts->{'verbose'});
-$intw->exception_verbosity(1) if ($opts->{'verbose'} >= 3);
 
 my $rv = 0;
 try {

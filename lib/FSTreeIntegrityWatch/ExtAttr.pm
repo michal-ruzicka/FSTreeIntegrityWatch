@@ -103,7 +103,7 @@ sub load_checksums {
         if (not defined($filename)) {
             $err = "No filename specified.";
         } elsif (-d $filename) {
-            $self->context->print_warning("'$filename' is a directory, skipping...");
+            $self->context->print_warning("'$filename' is a directory, loading its checksum is meaningless");
             next;
         }
         unless (-e $filename and -f $filename and -r $filename) {
