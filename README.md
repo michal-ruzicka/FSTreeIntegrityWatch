@@ -1,35 +1,68 @@
 FSTreeIntegrityWatch
 ====================
 
-Filesystem Extended Attributes File Integrity Tool
---------------------------------------------------
+Filesystem Tree Extended Attributes File Integrity Tool
+-------------------------------------------------------
 
-Tool to store/check file integrity information in filesystem extended
+A tool to store/check file integrity information in filesystem extended
 attributes.
 
 See
  * http://man7.org/linux/man-pages/man5/attr.5.html
 
 
-### FSTreeIntegrityWatch::Digest
+## Usage
 
-The module loads `Digest::*` modules dynamically based on arbitrary algorithm
-name provided by the caller. An exception is thrown if appropriate digest module 
-is not available in the system.
+The tools has build-in help. To see usage information run
+
+`extattr-file-integrity.pl --help`
+
+
+## Dependencies
+
+### CPAN modules
+
+The tools uses bunch of CPAN modules implementing useful functionality. To run
+the tool install the needed modules using your distribution software management
+tool or install up-to-date versions directly from CPAN:
+
+`cpan Class::Tiny DateTime Digest Encode Encode::Locale Exception::Class
+Exporter File::ExtAttr File::Find::utf8 File::Spec FindBin Getopt::Long JSON
+List::Compare List::MoreUtils List::Util Module::Load Scalar::Util Try::Tiny`
+
+Various digest algorithms are implemented in separate modules. The modules are
+loaded dynamically at runtime when needed so it is sufficient to install the
+implementation of algorithms you are going to use.
+
+`cpan Digest::Adler32 Digest::BLAKE Digest::BLAKE2 Digest::BMW Digest::CRC
+Digest::ECHO Digest::ED2K Digest::EdonR Digest::Fugue Digest::GOST
+Digest::Groestl Digest::Hamsi Digest::JH Digest::Keccak Digest::Luffa
+Digest::MD2 Digest::MD4 Digest::MD5 Digest::SHA Digest::SHA3 Digest::SHAvite3
+Digest::SIMD Digest::Shabal Digest::Skein Digest::Whirlpool`
 
 See
- * http://search.cpan.org/~gaas/Digest/Digest.pm
+  * http://www.cpan.org/
+
+### FSTreeIntegrityWatch::Digest
+
+The module loads `Digest::*` modules dynamically using `Module::Load` based on
+algorithm selected by the caller. An exception is thrown if appropriate digest
+module is not available in the system.
+
+See
+ * https://metacpan.org/pod/Digest
+ * https://metacpan.org/pod/Module::Load
 
 
 ### FSTreeIntegrityWatch::ExtAttr
 
 The module uses `File::ExtAttr` module that depends on `libattr`.
 
-In case of `cpan File::ExtAttr` installation error your system possibly needs
-`libattr-devel` packages to be installed.
+**In case of `cpan File::ExtAttr` installation error your system possibly needs
+`libattr-devel` packages to be installed.**
 
 See
- * http://search.cpan.org/~richdawe/File-ExtAttr/lib/File/ExtAttr.pm
+ * https://metacpan.org/pod/File::ExtAttr
 
 
 ### Error Handling
@@ -38,7 +71,7 @@ The module uses `FSTreeIntegrityWatch::Exception::*` exceptions to handles
 errors. The system is base on `Exception::Class` modules.
 
 See
- * http://search.cpan.org/~drolsky/Exception-Class/lib/Exception/Class.pm
+ * https://metacpan.org/pod/Exception::Class
  * http://www.drdobbs.com/web-development/exception-handling-in-perl-with-exceptio/184416129
 
 
@@ -51,8 +84,17 @@ At least version 1.001 of the `Class::Tiny` module is required as older versions
 lack the BUILDARGS method some of the `FSTreeIntegrityWatch::*` modules use.
 
 See
- * http://search.cpan.org/~dagolden/Class-Tiny/lib/Class/Tiny.pm
+ * https://metacpan.org/pod/Class::Tiny
  * http://perldoc.perl.org/perlootut.html
+
+
+### Command line parsing
+
+Command line arguments are processed using `Getopt::Long' module. GNU getopt
+and advanced features such as options bundling and auto completion can be used.
+
+See
+ * https://metacpan.org/pod/Getopt::Long
 
 
 
