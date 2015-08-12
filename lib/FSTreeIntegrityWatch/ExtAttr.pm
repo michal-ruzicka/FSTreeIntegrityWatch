@@ -7,10 +7,15 @@ use utf8;
 
 
 # Package modules
-use FSTreeIntegrityWatch::Tools qw(decode_locale_if_necessary);
+use FSTreeIntegrityWatch::Tools qw(
+    decode_locale_if_necessary
+    get_iso8601_formated_datetime
+);
 
 # External modules
+use Encode;
 use File::ExtAttr ':all';
+use JSON;
 use Try::Tiny;
 
 
@@ -66,14 +71,18 @@ sub store_checksums {
             $self->context->exp('ExtAttr', $err) if (defined($err));
 
             my $attr_name = sprintf("%s.%s", $attr_pref, $alg);
+            my $attr_value = to_json({
+                'storedAt' => get_iso8601_formated_datetime(),
+                'checksum' => $checksum,
+            });
 
             $self->context->print_info("storing '$alg' checksum '$checksum' to extended attribute '$attr_name' on '$filename'");
-            setfattr($filename, $attr_name, $checksum)
+            setfattr($filename, $attr_name, $attr_value)
                 or $self->context->exp('ExtAttr', "Failed to store checksum '$checksum' to file '$filename' in extended attribute '$attr_name': ".decode_locale_if_necessary($!));
 
             $sa->{$filename}->{$alg}->{'stored_at'}  = time;
             $sa->{$filename}->{$alg}->{'attr_name'}  = $attr_name;
-            $sa->{$filename}->{$alg}->{'attr_value'} = $checksum;
+            $sa->{$filename}->{$alg}->{'attr_value'} = $attr_value;
 
         }
     }
@@ -122,6 +131,8 @@ sub load_checksums {
 
             my $value = getfattr($filename, $attr);
             $self->context->exp('ExtAttr', "Failed to retrieve extended attribute '$attr' on file '$filename': ".decode_locale_if_necessary($!)) unless(defined($value));
+
+            $value = decode_utf8($value); # Extended attribute content is UTF-8 encoded JSON
 
             my ($prefix, $alg);
             if ($attr =~ $prefix_name_re) {

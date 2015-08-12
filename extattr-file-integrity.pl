@@ -280,10 +280,11 @@ try {
             if ($opts->{'verbose'} >= 1) {
                 foreach my $filename (sort keys %$dfc) {
                     foreach my $alg (sort keys %{$dfc->{$filename}->{'error'}}) {
-                        my $ecsum = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'};
-                        my $ccsum = $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'};
-                        printf STDERR "File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' – current checkum '%s'\n",
-                                      $filename, $alg, $ecsum, $ccsum;
+                        my $ecsum    = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'};
+                        my $ecsum_ts = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum_stored_at'};
+                        my $ccsum    = $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'};
+                        printf STDERR "File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' (stored at '%s') – current checksum '%s'\n",
+                                      $filename, $alg, $ecsum, $ecsum_ts, $ccsum;
                     }
                     foreach my $alg (sort keys %{$dfc->{$filename}->{'warning'}}) {
                         my $msg = $dfc->{$filename}->{'warning'}->{$alg}->{'message'};

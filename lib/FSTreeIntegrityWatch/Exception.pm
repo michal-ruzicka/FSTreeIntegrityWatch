@@ -16,6 +16,8 @@ our @EXPORT_OK = qw(
     config_error
     digest_error
     extattr_error
+    param_error
+    param_format_error
 );
 our %EXPORT_TAGS = (
     all => [ @EXPORT_OK ],
@@ -50,6 +52,18 @@ use Exception::Class (
         'alias'       => 'extattr_error',
         'isa'         => 'FSTreeIntegrityWatch::Exception',
         'description' => 'error thrown when working with extended attributes',
+    },
+
+    'FSTreeIntegrityWatch::Exception::Param' => {
+        'alias'       => 'param_error',
+        'isa'         => 'FSTreeIntegrityWatch::Exception',
+        'description' => 'error thrown when invalid method parameter is used',
+    },
+
+    'FSTreeIntegrityWatch::Exception::Param::Format' => {
+        'alias'       => 'param_format_error',
+        'isa'         => 'FSTreeIntegrityWatch::Exception::Param',
+        'description' => 'error thrown when invalid method parameter is used',
     },
 
 );

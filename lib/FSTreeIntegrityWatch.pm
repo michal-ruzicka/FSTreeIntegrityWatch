@@ -15,6 +15,7 @@ use FSTreeIntegrityWatch::ExtAttr;
 use feature qw(say);
 use File::Find::utf8;
 use File::Spec;
+use JSON;
 use List::Compare;
 use List::MoreUtils qw(uniq);
 use Try::Tiny;
@@ -353,7 +354,9 @@ sub verify_checksums {
         foreach my $filename (sort keys %$loaded_checksums) {
             foreach my $alg (sort keys %{$loaded_checksums->{$filename}}) {
 
-                my $lcsum = $loaded_checksums->{$filename}->{$alg}->{'attr_value'};
+                my $attr_value = from_json($loaded_checksums->{$filename}->{$alg}->{'attr_value'});
+                my $lcsum      = $attr_value->{'checksum'};
+                my $lcsum_time = $attr_value->{'storedAt'};
 
                 if (exists($computed_checksums->{$filename}->{$alg})) {
 
@@ -363,6 +366,7 @@ sub verify_checksums {
                         $dfc->{$filename}->{'error'}->{$alg}->{'verified_at'}       = time;
                         $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'} = $lcsum;
                         $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'} = $ccsum;
+                        $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum_stored_at'} = $lcsum_time;
                     }
 
                 } else {
