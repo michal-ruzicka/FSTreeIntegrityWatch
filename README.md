@@ -9,6 +9,8 @@ attributes.
 
 See
  * http://man7.org/linux/man-pages/man5/attr.5.html
+ * http://man7.org/linux/man-pages/man1/getfattr.1.html
+ * http://man7.org/linux/man-pages/man1/setfattr.1.html
 
 
 ## Usage
