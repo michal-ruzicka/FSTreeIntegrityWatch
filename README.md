@@ -92,7 +92,7 @@ See
 
 ### Command line parsing
 
-Command line arguments are processed using `Getopt::Long' module. GNU getopt
+Command line arguments are processed using `Getopt::Long` module. GNU getopt
 and advanced features such as options bundling and auto completion can be used.
 
 See
