@@ -45,4 +45,6 @@ pp --verbose \
         -M Digest::Shabal \
         -M Digest::Skein \
         -M Digest::Whirlpool \
+    -I lib \
+        -M FSTreeIntegrityWatch \
     -o extattr-file-integrity extattr-file-integrity.pl
