@@ -38,6 +38,7 @@ Than you can pack the script with all the dependencies running
 producing standalone binary executable `extattr-file-integrity`.
 
 See
+  * https://metacpan.org/pod/pp
   * https://metacpan.org/pod/PAR::Tutorial
   * https://metacpan.org/pod/PAR::Packer
   * https://metacpan.org/pod/PAR
