@@ -24,7 +24,7 @@ The tools has build-in help. To see usage information run
 
 **This feature is highly experimental!**
 
-You can use Perl Archive Toolkit (PAR) to create a single all-in-one binary 
+You can use Perl Archive Toolkit (PAR) to create a single all-in-one binary
 executable of the tool.
 
 It is necessary to have `PAR::Packer` tool installed:
@@ -35,7 +35,9 @@ Than you can pack the script with all the dependencies running
 
 `pack-to-executable.sh`
 
-producing standalone binary executable `extattr-file-integrity`.
+producing standalone binary executable `extattr-file-integrity.packed-standalone`
+and Perl scripts `extattr-file-integrity.packed-*.pl` with various level of
+dependencies packed inside to be run on slim Perl installations.
 
 See
   * https://metacpan.org/pod/pp
