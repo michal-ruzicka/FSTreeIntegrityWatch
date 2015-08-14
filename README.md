@@ -20,6 +20,29 @@ The tools has build-in help. To see usage information run
 `extattr-file-integrity.pl --help`
 
 
+## All-in-one executable
+
+**This feature is highly experimental!**
+
+You can use Perl Archive Toolkit (PAR) to create a single all-in-one binary 
+executable of the tool.
+
+It is necessary to have `PAR::Packer` tool installed:
+
+`cpan PAR::Packer`
+
+Than you can pack the script with all the dependencies running
+
+`pack-to-executable.sh`
+
+producing standalone binary executable `extattr-file-integrity`.
+
+See
+  * https://metacpan.org/pod/PAR::Tutorial
+  * https://metacpan.org/pod/PAR::Packer
+  * https://metacpan.org/pod/PAR
+
+
 ## Dependencies
 
 ### CPAN modules
