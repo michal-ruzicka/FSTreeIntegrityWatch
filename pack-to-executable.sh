@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ifile='extattr-file-integrity.pl'
-dependencies='
+export ifile='extattr-file-integrity.pl'
+export dependencie='
 -M Class::Tiny
 -M DateTime
 -M Digest
@@ -50,35 +50,37 @@ dependencies='
 -I lib
     -M FSTreeIntegrityWatch
 '
+export PP_OPTS="--verbose=3 --compile --execute --clean --compress 9 $dependencies"
+
 
 # Stand-alone setup
-ofile='extattr-file-integrity.packed-standalone'
+export ofile='extattr-file-integrity.packed-standalone'
 echo "### Building"
 echo "###   ${ofile}"
 echo "### for use independently of Perl installation"
-pp --verbose $dependencies       -o "${ofile}" "${ifile}"
+pp       -o "${ofile}" "${ifile}"
 
 # For use with Perl interpreter only, without core modules
-ofile='extattr-file-integrity.packed-for-perl-interpreter-only-without-core-modules.pl'
+export ofile='extattr-file-integrity.packed-for-perl-interpreter-only-without-core-modules.pl'
 echo "### Building"
 echo "###   ${ofile}"
 echo "### for use with Perl interpreter without core modules installed"
-pp --verbose $dependencies -P    -o "${ofile}" "${ifile}"
+pp -B -P -o "${ofile}" "${ifile}"
 
 # For use with Perl with core module installed
-ofile='extattr-file-integrity.packed-for-perl-interpreter-with-core-modules.pl'
+export ofile='extattr-file-integrity.packed-for-perl-interpreter-with-core-modules.pl'
 echo "### Building"
 echo "###   ${ofile}"
 echo "### for use with Perl with core module installed"
-pp --verbose $dependencies -B -P -o "${ofile}" "${ifile}"
+pp    -P -o "${ofile}" "${ifile}"
 
 # For use with Perl with PAR.pm and its dependencies installed
-ofile='extattr-file-integrity.packed-for-perl-with-PAR.pm-with-its-dependencies.pl'
+export ofile='extattr-file-integrity.packed-for-perl-interpreter-with-PAR.pm-and-its-dependencies.pl'
 echo "### Building"
 echo "###   ${ofile}"
 echo "###   ${ofile%.pl}.par"
 echo "### for use with Perl with PAR.pm and its dependencies installed"
-pp --verbose $dependencies -o "${ofile%.pl}.par" -p "${ifile}"
+pp       -o "${ofile%.pl}.par" -p "${ifile}"
 head -n 1 "${ifile}" > "${ofile}"
 echo "use PAR '${ofile%.pl}.par';" >> "${ofile}"
 tac "${ifile}" | head -n -1 | tac >> "${ofile}"
