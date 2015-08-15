@@ -261,6 +261,33 @@ sub print_info {
 
 }
 
+# Create and return a new FSTreeIntegrityWatch class instance, clone its
+# configuration (i.e. exception_verbosity, verbosity, ext_attr_name_prefix,
+# files, algorithms and recursive attributes settings etc., but _not_ results
+# attributes such as checksums, stored_ext_attrs etc.) from the current one.
+# returns
+#   the new instance with the cloned configuration
+sub clone_configuration {
+
+    my $self = shift @_;
+
+    my $clone = FSTreeIntegrityWatch->new(
+        'exception_verbosity'  => $self->exception_verbosity(),
+        'verbosity'            => $self->verbosity(),
+        'ext_attr_name_prefix' => $self->ext_attr_name_prefix(),
+        'files'                => [ @{$self->files()} ],
+        'algorithms'           => [ @{$self->algorithms()} ],
+        'recursive'            => 0, # Do not traverse the filesystem and
+                                     # possibly modify files array when cloning
+                                     # configuration!
+    );
+    $clone->recursive($self->recursive()); # But clone the recursion setting
+                                           # finally.
+
+    return $clone;
+
+}
+
 # For $self->files() computes their checksums using all the $self->algorithms()
 # and stores the results to the extended attributes of the files.
 # returns
@@ -341,13 +368,9 @@ sub verify_checksums {
         }
         my $lc = List::Compare->new([keys %$used_algs], $self->algorithms());
         my @used_algorithms = $lc->get_intersection();
-        my $digest_ctx = FSTreeIntegrityWatch->new(
-            'exception_verbosity'  => $self->exception_verbosity(),
-            'verbosity'            => $self->verbosity(),
-            'ext_attr_name_prefix' => $self->ext_attr_name_prefix(),
-            'files'                => [ @used_files ],
-            'algorithms'           => [ @used_algorithms ],
-        );
+        my $digest_ctx = $self->clone_configuration();
+           $digest_ctx->files([@used_files]);
+           $digest_ctx->algorithms([@used_algorithms]);
         my $digest = FSTreeIntegrityWatch::Digest->new($digest_ctx);
         my $computed_checksums = $digest->compute_checksums();
 
