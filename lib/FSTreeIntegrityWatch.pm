@@ -26,6 +26,7 @@ use subs 'exception_verbosity'; # Necessary to provide our own 'exception_verbos
 use subs 'verbosity'; # Necessary to provide our own 'verbosity' accessor.
 use subs 'files'; # Necessary to provide our own 'files' accessor.
 use subs 'recursive'; # Necessary to provide our own 'recursive' accessor.
+use subs 'batch_size'; # Necessary to provide our own 'recursive' accessor.
 use Class::Tiny {
     'exception_verbosity'      => 0,
     'verbosity'                => 0,
@@ -33,6 +34,7 @@ use Class::Tiny {
     'algorithms'               => sub { [ "SHA-256" ] },
     'files'                    => sub { [ ] },
     'recursive'                => 0,
+    'batch_size'               => 10,
     'checksums'                => sub { { } },
     'stored_ext_attrs'         => sub { { } },
     'loaded_ext_attrs'         => sub { { } },
@@ -207,6 +209,41 @@ sub recursive {
 
 }
 
+# Set/get number of input files processed in one storing/verification batch.
+# args
+#   0 process all the inputs in one bach or
+#   number > 0 (default 3) to process given number of files at once
+# throws
+#   FSTreeIntegrityWatch::Exception::Config in case of an invalid argument
+sub batch_size {
+
+    my $self = shift @_;
+
+    if (@_) {
+
+        my $value = shift @_;
+
+        if ($value =~ /^\d+$/) {
+            return $self->{'batch_size'} = $value;
+        } else {
+            my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+            $self->{'batch_size'} = $defaults->{'batch_size'};
+            $self->exp('Config', "Invalid 'batch_size' configuration value, use '0' or positive number.");
+        }
+
+    } elsif ( exists $self->{'batch_size'} ) {
+
+        return $self->{'batch_size'};
+
+    } else {
+
+        my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
+        return $self->{'batch_size'} = $defaults->{'batch_size'};
+
+    }
+
+}
+
 # Throw some of the FSTreeIntegrityWatch::Exception exceptions following
 # exception verbosity setting.
 # args
@@ -301,11 +338,30 @@ sub store_checksums {
 
     $self->print_info("Storing checksums...");
 
-    my $digest  = FSTreeIntegrityWatch::Digest->new($self);
-    my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
+    my $csum  = $self->checksums;
+    my $scsum = $self->stored_ext_attrs;
 
-    $digest->compute_checksums();
-    my $scsum = $extattr->store_checksums();
+    my @inputs = @{$self->files};
+    my $batch_size = $self->batch_size == 0 ? scalar(@inputs) : $self->batch_size;
+    while (my @files = splice(@inputs, 0, $batch_size)) {
+
+        my $config = $self->clone_configuration();
+           $config->recursive(0); # Do not modify the file list.
+           $config->files([@files]);
+
+        my $digest  = FSTreeIntegrityWatch::Digest->new($config);
+        my $batch_csum  = $digest->compute_checksums();
+        foreach my $f (keys %$batch_csum) {
+            $csum->{$f} = $batch_csum->{$f};
+        }
+
+        my $extattr = FSTreeIntegrityWatch::ExtAttr->new($config);
+        my $batch_scsum = $extattr->store_checksums();
+        foreach my $f (keys %$batch_scsum) {
+            $scsum->{$f} = $batch_scsum->{$f};
+        }
+
+    }
 
     $self->print_info("Storing checksums done.");
 
@@ -350,61 +406,72 @@ sub verify_checksums {
 
     my $dfc = $self->detected_file_corruption();
 
-    try {
-        my $extattr = FSTreeIntegrityWatch::ExtAttr->new($self);
-        my $loaded_checksums = $extattr->load_checksums();
+    my @inputs = @{$self->files};
+    my $batch_size = $self->batch_size == 0 ? scalar(@inputs) : $self->batch_size;
+    while (my @files = splice(@inputs, 0, $batch_size)) {
 
-        # It is not necessary to computed checksums for files/algorithm we do
-        # not know the previous values to compare with. Thus, prepare a new
-        # context containing only these files and filters current algorithms to
-        # the ones used on these files.
-        my @used_files = ();
-        my $used_algs = {};
-        foreach my $filepath (keys %$loaded_checksums) {
-            push(@used_files, $filepath);
-            foreach my $alg (keys %{$loaded_checksums->{$filepath}}) {
-                $used_algs->{$alg}++;
+        my $config = $self->clone_configuration();
+           $config->recursive(0); # Do not modify the file list.
+           $config->files([@files]);
+
+        try {
+            my $extattr = FSTreeIntegrityWatch::ExtAttr->new($config);
+            my $loaded_checksums = $extattr->load_checksums();
+
+            # It is not necessary to computed checksums for files/algorithm we
+            # do not know the previous values to compare with. Thus, prepare
+            # a new context containing only these files and filters current
+            # algorithms to the ones used on these files.
+            my @used_files = ();
+            my $used_algs = {};
+            foreach my $filepath (keys %$loaded_checksums) {
+                push(@used_files, $filepath);
+                foreach my $alg (keys %{$loaded_checksums->{$filepath}}) {
+                    $used_algs->{$alg}++;
+                }
             }
-        }
-        my $lc = List::Compare->new([keys %$used_algs], $self->algorithms());
-        my @used_algorithms = $lc->get_intersection();
-        my $digest_ctx = $self->clone_configuration();
-           $digest_ctx->files([@used_files]);
-           $digest_ctx->algorithms([@used_algorithms]);
-        my $digest = FSTreeIntegrityWatch::Digest->new($digest_ctx);
-        my $computed_checksums = $digest->compute_checksums();
+            my $lc = List::Compare->new([keys %$used_algs], $config->algorithms());
+            my @used_algorithms = $lc->get_intersection();
+            my $digest_ctx = $config->clone_configuration();
+               $digest_ctx->recursive(0); # Do not modify the file list.
+               $digest_ctx->files([@used_files]);
+               $digest_ctx->algorithms([@used_algorithms]);
+            my $digest = FSTreeIntegrityWatch::Digest->new($digest_ctx);
+            my $computed_checksums = $digest->compute_checksums();
 
-        foreach my $filename (sort keys %$loaded_checksums) {
-            foreach my $alg (sort keys %{$loaded_checksums->{$filename}}) {
+            foreach my $filename (sort keys %$loaded_checksums) {
+                foreach my $alg (sort keys %{$loaded_checksums->{$filename}}) {
 
-                my $attr_value = from_json($loaded_checksums->{$filename}->{$alg}->{'attr_value'});
-                my $lcsum      = $attr_value->{'checksum'};
-                my $lcsum_time = $attr_value->{'storedAt'};
+                    my $attr_value = from_json($loaded_checksums->{$filename}->{$alg}->{'attr_value'});
+                    my $lcsum      = $attr_value->{'checksum'};
+                    my $lcsum_time = $attr_value->{'storedAt'};
 
-                if (exists($computed_checksums->{$filename}->{$alg})) {
+                    if (exists($computed_checksums->{$filename}->{$alg})) {
 
-                    my $ccsum = $computed_checksums->{$filename}->{$alg}->{'checksum_value'};
+                        my $ccsum = $computed_checksums->{$filename}->{$alg}->{'checksum_value'};
 
-                    unless ($lcsum eq $ccsum) {
-                        $dfc->{$filename}->{'error'}->{$alg}->{'verified_at'}       = time;
-                        $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'} = $lcsum;
-                        $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'} = $ccsum;
-                        $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum_stored_at'} = $lcsum_time;
+                        unless ($lcsum eq $ccsum) {
+                            $dfc->{$filename}->{'error'}->{$alg}->{'verified_at'}       = time;
+                            $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'} = $lcsum;
+                            $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'} = $ccsum;
+                            $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum_stored_at'} = $lcsum_time;
+                        }
+
+                    } else {
+
+                        $dfc->{$filename}->{'warning'}->{$alg}->{'message'}
+                            = sprintf("Unknown algorithm '%s', checksum '%s' not verified.",
+                                      $alg, $lcsum);
+
                     }
 
-                } else {
-
-                    $dfc->{$filename}->{'warning'}->{$alg}->{'message'}
-                        = sprintf("Unknown algorithm '%s', checksum '%s' not verified.",
-                                  $alg, $lcsum);
-
                 }
-
             }
-        }
-    } catch {
-        $self->exp(undef, "Verification of checksums failed: $_");
-    };
+        } catch {
+            $config->exp(undef, "Verification of checksums failed: $_");
+        };
+
+    }
 
     $self->print_info("Verifying checksums done.");
 
