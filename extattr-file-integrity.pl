@@ -46,6 +46,7 @@ my @opts_def = (
     'store|save|s' => sub {$opts->{'verify'} = 0},
     'algorithm|a=s@',
     'ext-attr-prefix|prefix|p=s',
+    'batch-size|b=i',
     'verbose|v+',
     'quiet|q' => sub {$opts->{'verbose'} = 0},
     'help|h',
@@ -83,6 +84,7 @@ sub print_usage_and_exit {
                      "[ { --verbose|-v [ --verbose|-v ... ] | --quiet|-q } ]",
                      "[ --algorithm|-a hash_algorithm_name [ --algorithm|-a hash_algorithm_name ... ] ]",
                      "[ --ext-attr-prefix|--prefix|-p ext_attr_name_prefix ]",
+                     "[ --batch-size|-b size ]",
                      "--",
                      "{ - | file [ file ... ] }",
                 ),
@@ -118,6 +120,17 @@ sub print_usage_and_exit {
                      "-a CRC-64",
                      "testdata/data/dir1/file2",
                      "testdata/data/file6",
+                ),
+                join(' ',
+                     "find testdata/ -type f -print0",
+                     "|",
+                     "$FindBin::Script",
+                     "--store",
+                     "-vv",
+                     "--null",
+                     "-a CRC-32",
+                     "--batch-size 20",
+                     "-",
                 ),
                 join(' ',
                      "$FindBin::Script",
@@ -163,6 +176,13 @@ sub print_usage_and_exit {
                      "Extended attribute names on the files are assembled as: <ext_attr_prefix_string>.<digest_algorithm_name>",
                      "Default is 'extattr-file-integrity'."),
                 join("\t\n\t\t",
+                     "-b, --batch-size",
+                     "Defines processing batch size, i.e.",
+                     "– the number of files the hash is computed from prior storing the checksums to their extended attributes,",
+                     "– the number of files the hash is loaded from their extended attributes and verified against newly computed checksum prior processing next `batch-size' of files.",
+                     "Use '0' to process all input files in a single batch or a positive integer to set exact batch size.",
+                     "Default is '10'."),
+                join("\t\n\t\t",
                      "-v, --verbose",
                      "Set verbosity level. Multiple uses of this option increase the detail of info messages.",
                      "level 1 (default): print warning and error messages",
@@ -194,6 +214,8 @@ sub print_usage_and_exit {
 sub check_options {
     print_usage_and_exit() if ($opts->{'help'});
     print_usage_and_exit(2, 'No files to work on.') unless (scalar(@files) > 0);
+    print_usage_and_exit(3, 'Invalid batch size: '.$opts->{'batch-size'})
+            if (defined($opts->{'batch-size'}) and $opts->{'batch-size'} < 0);
 }
 
 
@@ -240,6 +262,7 @@ my $intw = FSTreeIntegrityWatch->new(
     'recursive'            => $opts->{'recursive'},
 );
 $intw->algorithms($opts->{'algorithm'}) if (defined($opts->{'algorithm'}));
+$intw->batch_size($opts->{'batch-size'}) if (defined($opts->{'batch-size'}));
 $intw->verbosity($opts->{'verbose'} > 2 ? 2 : $opts->{'verbose'});
 $intw->exception_verbosity(1) if ($opts->{'verbose'} >= 3);
 
