@@ -30,13 +30,13 @@ use Class::Tiny {
     'exception_verbosity'      => 0,
     'verbosity'                => 0,
     'ext_attr_name_prefix'     => 'extattr-file-integrity',
-    'algorithms'               => [ "SHA-256" ],
-    'files'                    => [ ],
+    'algorithms'               => sub { [ "SHA-256" ] },
+    'files'                    => sub { [ ] },
     'recursive'                => 0,
-    'checksums'                => {},
-    'stored_ext_attrs'         => {},
-    'loaded_ext_attrs'         => {},
-    'detected_file_corruption' => {},
+    'checksums'                => sub { { } },
+    'stored_ext_attrs'         => sub { { } },
+    'loaded_ext_attrs'         => sub { { } },
+    'detected_file_corruption' => sub { { } },
 };
 
 

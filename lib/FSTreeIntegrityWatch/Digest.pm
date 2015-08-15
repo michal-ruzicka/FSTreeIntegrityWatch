@@ -17,7 +17,7 @@ use Try::Tiny;
 
 # Use Class::Tiny for class construction.
 use Class::Tiny 1.001 qw(context), { # BUILDARGS method was introduced in version 1.001 of the module.
-    'algorithms' => {
+    'algorithms' => sub { {
         "Adler32" => {
             'handler'   => \&digest_interface_handler,
             'arguments' => [ 'Digest::Adler32' ],
@@ -338,7 +338,7 @@ use Class::Tiny 1.001 qw(context), { # BUILDARGS method was introduced in versio
             'handler'   => \&digest_interface_handler,
             'arguments' => [ 'Digest::Whirlpool' ],
         },
-    },
+    } },
 };
 
 
