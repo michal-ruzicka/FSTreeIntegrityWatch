@@ -1,56 +1,7 @@
 #!/bin/bash
 
 export ifile='extattr-file-integrity.pl'
-export dependencie='
--M Class::Tiny
--M DateTime
--M Digest
--M Encode
--M Encode::Locale
--M Exception::Class
--M Exporter
--M File::ExtAttr
--M File::Find::utf8
--M File::Spec
--M FindBin
--M Getopt::Long
--M JSON
--M List::Compare
--M List::MoreUtils
--M List::MoreUtils::PP
--M List::Util
--M Module::Load
--M Scalar::Util
--M Try::Tiny
--M Digest::Adler32
--M Digest::BLAKE
--M Digest::BLAKE2
--M Digest::BMW
--M Digest::CRC
--M Digest::ECHO
--M Digest::ED2K
--M Digest::EdonR
--M Digest::Fugue
--M Digest::GOST
--M Digest::Groestl
--M Digest::Hamsi
--M Digest::JH
--M Digest::Keccak
--M Digest::Luffa
--M Digest::MD2
--M Digest::MD4
--M Digest::MD5
--M Digest::SHA
--M Digest::SHA3
--M Digest::SHAvite3
--M Digest::SIMD
--M Digest::Shabal
--M Digest::Skein
--M Digest::Whirlpool
--I lib
-    -M FSTreeIntegrityWatch
-'
-export PP_OPTS="--verbose=3 --compile --execute --clean --compress 9 $dependencies"
+export PP_OPTS="--verbose=3 --compile --execute --clean --compress 9 -I lib -M FSTreeIntegrityWatch::Packer"
 
 
 # Stand-alone setup
