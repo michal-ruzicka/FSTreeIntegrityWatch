@@ -50,6 +50,7 @@ use List::MoreUtils::PP;
 use List::MoreUtils;
 use List::Util;
 use Module::Load;
+use PerlIO::encoding;
 use Scalar::Util;
 use Try::Tiny;
 
