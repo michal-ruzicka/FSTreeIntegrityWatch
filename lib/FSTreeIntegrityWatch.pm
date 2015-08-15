@@ -190,7 +190,7 @@ sub recursive {
             return $self->{'recursive'} = $value;
         } else {
             my $defaults = Class::Tiny->get_all_attribute_defaults_for( ref $self );
-            $self->{'recursive'} = $defaults->{'1rbosity'};
+            $self->{'recursive'} = $defaults->{'recursive'};
             $self->exp('Config', "Invalid 'recursive' configuration value, use '0' or '1'.");
         }
 
