@@ -17,6 +17,7 @@ dependencies='
 -M JSON
 -M List::Compare
 -M List::MoreUtils
+-M List::MoreUtils::PP
 -M List::Util
 -M Module::Load
 -M Scalar::Util
