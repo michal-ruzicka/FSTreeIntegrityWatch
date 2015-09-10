@@ -1,11 +1,11 @@
 FSTreeIntegrityWatch
 ====================
 
-Filesystem Tree Extended Attributes File Integrity Tool
--------------------------------------------------------
+Filesystem Tree File Integrity Watch Tool
+-----------------------------------------
 
 A tool to store/check file integrity information in filesystem extended
-attributes.
+attributes or JSON integrity database dump.
 
 See
  * http://man7.org/linux/man-pages/man5/attr.5.html
@@ -17,7 +17,7 @@ See
 
 The tools has build-in help. To see usage information run
 
-`extattr-file-integrity.pl --help`
+`fstree-integrity-watch.pl --help`
 
 
 ## Dependencies
@@ -29,8 +29,9 @@ the tool install the needed modules using your distribution software management
 tool or install up-to-date versions directly from CPAN:
 
 `cpan Class::Tiny DateTime Digest Encode Encode::Locale Exception::Class
-Exporter File::ExtAttr File::Find::utf8 File::Spec FindBin Getopt::Long JSON
-List::Compare List::MoreUtils List::Util Module::Load Scalar::Util Try::Tiny`
+Exporter File::Basename File::ExtAttr File::Find::utf8 File::Spec FindBin
+Getopt::Long JSON List::Compare List::MoreUtils List::Util Module::Load
+Scalar::Util Try::Tiny`
 
 Various digest algorithms are implemented in separate modules. The modules are
 loaded dynamically at runtime when needed so it is sufficient to install the
