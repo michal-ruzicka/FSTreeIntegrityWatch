@@ -20,7 +20,6 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
-use feature qw(say);
 use File::Spec;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
 use List::Util qw(sum);
@@ -355,14 +354,7 @@ try {
 
         my $dfc;
         if (defined($opts->{'dump-file'})) {
-            say "Loading integrity database in JSON format from file '".$opts->{'dump-file'}."'..." if ($opts->{'verbose'} >= 2);
-            open(DUMP, "<:encoding(UTF-8)", $opts->{'dump-file'})
-                or die "open(".$opts->{'dump-file'}.") failed: $!";
-            my @json_lines = <DUMP>;
-            my $json_dump = join('', @json_lines);
-            close(DUMP);
-            say "Loading integrity database done." if ($opts->{'verbose'} >= 2);
-            $dfc = $intw->verify_checksums($json_dump, $opts->{'dump-relative-to'});
+            $dfc = $intw->verify_checksums($opts->{'dump-file'}, $opts->{'dump-relative-to'});
         } else {
             $dfc = $intw->verify_checksums();
         }
@@ -393,14 +385,8 @@ try {
     } else { # Save mode
 
         $intw->store_checksums();
-        if (defined($opts->{'dump-file'})) {
-            say "Saving integrity database in UTF-8 encoded JSON format to file '".$opts->{'dump-file'}."'..." if ($opts->{'verbose'} >= 2);
-            open(DUMP, ">:encoding(UTF-8)", $opts->{'dump-file'})
-                or die "open(".$opts->{'dump-file'}.") failed: $!";
-            print DUMP $intw->get_stored_attrs_as_json($opts->{'dump-relative-to'});
-            close(DUMP);
-            say "Saving integrity database done." if ($opts->{'verbose'} >= 2);
-        }
+        $intw->dump_stored_attrs_as_json_to_file($opts->{'dump-file'},
+                                                 $opts->{'dump-relative-to'}) if (defined($opts->{'dump-file'}));
 
     }
 } catch {
