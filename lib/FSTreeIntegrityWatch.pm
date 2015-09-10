@@ -370,12 +370,12 @@ sub store_checksums {
 
 }
 
-# Returns $self->stored_ext_attrs in integrity-database JSON format.
+# Returns $self->stored_ext_attrs in integrity database JSON format.
 # args
 #   relative_to dir path to write file paths in the dump relatively to the directory
 #   or undef to insert absolute paths in the dump.
 # returns
-#   integrity-database created from $self->stored_ext_attrs as
+#   integrity database created from $self->stored_ext_attrs as
 #   pretty printed JSON
 sub get_stored_attrs_as_json {
 
@@ -403,6 +403,66 @@ sub get_stored_attrs_as_json {
 
 }
 
+# Returns data from integrity database in JSON format produced
+# by $self->get_stored_attrs_as_json() in $self->stored_ext_attrs format.
+# args
+#   json_dump  JSON dump of integrity checksums produced by
+#              $self->get_stored_attrs_as_json()
+#   relative_to dir path to interpret file paths in the dump
+#              relatively to
+#              OR undef to use unmodified paths from the dump
+# returns
+#   hash ref in $self->stored_ext_attrs format
+sub get_loaded_attrs_from_json {
+
+    my $self = shift @_;
+    my $json_dump = shift @_;
+    my $relative_to = shift @_;
+
+    if (defined($relative_to)) {
+        $relative_to = File::Spec->canonpath(File::Spec->rel2abs($relative_to));
+        $relative_to = dirname($relative_to) if (not -d $relative_to);
+    }
+
+    $self->print_info("Loading checksums from JSON dump ".(defined($relative_to) ? "relatively to '$relative_to'" : '')."...");
+
+    my $la        = {};
+    my $attr_pref = $self->ext_attr_name_prefix();
+
+    my $prefix_name_re = qr/^(\Q$attr_pref\E)\.(\S+)$/;
+
+    my $json = from_json($json_dump);
+
+    foreach my $f (keys %$json) {
+
+        my $abs_fn = defined($relative_to) ? File::Spec->canonpath(File::Spec->rel2abs($f, $relative_to)) : $f;
+
+        foreach my $n (keys %{$json->{$f}}) {
+
+            my $v = $json->{$f}->{$n};
+
+            if ($n =~ $prefix_name_re) {
+
+                my ($prefix, $alg) = ($1, $2);
+
+                $self->print_info("loading checksum from JSON dump of attribute '$n' of '$f'");
+
+                $la->{$abs_fn}->{$alg}->{'loaded_at'}  = time;
+                $la->{$abs_fn}->{$alg}->{'attr_name'}  = $n;
+                $la->{$abs_fn}->{$alg}->{'attr_value'} = to_json($v);
+
+            }
+
+        }
+
+    }
+
+    $self->print_info("Loading checksums from JSON dump done.");
+
+    return $la;
+
+}
+
 # For $self->files() loads their saved checksums from the extended attributes.
 # returns
 #   loaded_ext_attrs hash ref of the used context
@@ -427,6 +487,14 @@ sub load_checksums {
 # For $self->files() loads their saved checksums from the extended attributes,
 # recalculates the checksums using $self->algorithms() and compare the loaded
 # checksums with the newly computed checksums.
+# args
+#   json_dump  JSON dump of integrity checksums produced by
+#              $self->get_stored_attrs_as_json() to use instead of
+#              reading extended attributes form the filesystem
+#              OR undef to read extended attributes form the filesystem
+#   json_dump_relative_to dir path to interpret file paths in the dump
+#              relatively to
+#              OR undef to use unmodified paths from the dump
 # returns
 #   detected_file_corruption hash ref of the used context
 # throws
@@ -435,6 +503,8 @@ sub load_checksums {
 sub verify_checksums {
 
     my $self = shift @_;
+    my $json_dump = shift @_;
+    my $json_dump_relative_to = shift @_;
 
     $self->print_info("Verifying checksums...");
 
@@ -449,8 +519,13 @@ sub verify_checksums {
            $config->files([@files]);
 
         try {
-            my $extattr = FSTreeIntegrityWatch::ExtAttr->new($config);
-            my $loaded_checksums = $extattr->load_checksums();
+            my $loaded_checksums;
+            if (defined($json_dump)) {
+                $loaded_checksums = $self->get_loaded_attrs_from_json($json_dump, $json_dump_relative_to);
+            } else {
+                my $extattr = FSTreeIntegrityWatch::ExtAttr->new($config);
+                $loaded_checksums = $extattr->load_checksums();
+            }
 
             # It is not necessary to computed checksums for files/algorithm we
             # do not know the previous values to compare with. Thus, prepare

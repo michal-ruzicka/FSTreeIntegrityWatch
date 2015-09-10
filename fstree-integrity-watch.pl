@@ -136,6 +136,15 @@ sub print_usage_and_exit {
                 ),
                 join(' ',
                      "$FindBin::Script",
+                     "--dump-file testdata.json",
+                     "--dump-relative-to testdata/data/",
+                     "-a SHA-256",
+                     "-a CRC-64",
+                     "-r",
+                     "testdata/",
+                ),
+                join(' ',
+                     "$FindBin::Script",
                      "--save",
                      "--dump-file testdata.json",
                      "--dump-relative-to",
@@ -205,11 +214,13 @@ sub print_usage_and_exit {
                      "Exit with non-zero exit value in case of any error."),
                 join("\t\n\t\t",
                      "-f, --dump-file <path/to/dump_file.json>",
-                     "Path to file the computed checksums save to in JSON format.",
-                     "Contents of the JSON integrity database is equivalent to contents of the extended attributes contents."),
+                     "Path to file in JSON format the computed checksums save to / read from.",
+                     "Contents of the JSON integrity database is equivalent to contents of the extended attributes contents.",
+                     "In integrity storing mode (see `--save'): computed data is stored to the dump file in addition to writing them to the extended attributes.",
+                     "In integrity verification mode (see `--verify'): file checksums are read from the dump file instead of reading the extended attributes (useful for use with filesystem without extended attributes support)."),
                 join("\t\n\t\t",
                      "-t, --relative-to, --dump-relative-to [ <path/to/dir/> ]",
-                     "Directory path to write file paths in the dump file (see `--dump-file') relatively to.",
+                     "Directory path to read/write file paths in the dump file (see `--dump-file') relatively to.",
                      "Dir path specification is optional. If omitted the current working directory is used."),
                 join("\t\n\t\t",
                      "-a, --algorithm <algorithm_name>",
@@ -340,9 +351,22 @@ my $rv = 0;
 try {
     # Mode of operation – verify existing saved checksums or save the current
     # state?
-    if ($opts->{'verify'}) {
-        # Verify mode
-        my $dfc = $intw->verify_checksums();
+    if ($opts->{'verify'}) { # Verification mode
+
+        my $dfc;
+        if (defined($opts->{'dump-file'})) {
+            say "Loading integrity database in JSON format from file '".$opts->{'dump-file'}."'..." if ($opts->{'verbose'} >= 2);
+            open(DUMP, "<:encoding(UTF-8)", $opts->{'dump-file'})
+                or die "open(".$opts->{'dump-file'}.") failed: $!";
+            my @json_lines = <DUMP>;
+            my $json_dump = join('', @json_lines);
+            close(DUMP);
+            say "Loading integrity database done." if ($opts->{'verbose'} >= 2);
+            $dfc = $intw->verify_checksums($json_dump, $opts->{'dump-relative-to'});
+        } else {
+            $dfc = $intw->verify_checksums();
+        }
+
         if (scalar(keys %$dfc) > 0) {
             # Exit with error exit code only in case of error, warnings are OK.
             $rv = sum(map { exists($dfc->{$_}->{'error'}) ? 1 : 0 } keys %$dfc) > 0 ? 1 : 0;
@@ -365,8 +389,9 @@ try {
                 }
             }
         }
-    } else {
-        # Save mode
+
+    } else { # Save mode
+
         $intw->store_checksums();
         if (defined($opts->{'dump-file'})) {
             say "Saving integrity database in UTF-8 encoded JSON format to file '".$opts->{'dump-file'}."'..." if ($opts->{'verbose'} >= 2);
@@ -376,6 +401,7 @@ try {
             close(DUMP);
             say "Saving integrity database done." if ($opts->{'verbose'} >= 2);
         }
+
     }
 } catch {
     if ($opts->{'verbose'} >= 1) {
