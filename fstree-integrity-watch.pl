@@ -21,6 +21,7 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 # External modules
 use feature qw(say);
+use File::Spec;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
 use List::Util qw(sum);
 use Scalar::Util qw(blessed);
@@ -52,6 +53,7 @@ my @opts_def = (
     'verify',
     'store|save|s' => sub {$opts->{'verify'} = 0},
     'dump-file|f=s',
+    'dump-relative-to|relative-to|t:s',
     'algorithm|a=s@',
     'ext-attr-prefix|prefix|p=s',
     'batch-size|b=i',
@@ -90,6 +92,7 @@ sub print_usage_and_exit {
                      "$FindBin::Script",
                      "[ { --verify | --store|--save|-s } ]",
                      "[ --dump-file|-f path/to/dump_file.json ]",
+                     "[ --dump-relative-to|--relative-to|-t [ path/to/dir/ ] ]",
                      "[ { --verbose|-v [ --verbose|-v ... ] | --quiet|-q } ]",
                      "[ --algorithm|-a hash_algorithm_name [ --algorithm|-a hash_algorithm_name ... ] ]",
                      "[ --ext-attr-prefix|--prefix|-p ext_attr_name_prefix ]",
@@ -118,6 +121,24 @@ sub print_usage_and_exit {
                      "$FindBin::Script",
                      "--save",
                      "--dump-file testdata.json",
+                     "-a CRC-64",
+                     "-r",
+                     "testdata/",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--save",
+                     "--dump-file testdata.json",
+                     "--dump-relative-to testdata/data/",
+                     "-a CRC-64",
+                     "-r",
+                     "testdata/",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--save",
+                     "--dump-file testdata.json",
+                     "--dump-relative-to",
                      "-a CRC-64",
                      "-r",
                      "testdata/",
@@ -187,6 +208,10 @@ sub print_usage_and_exit {
                      "Path to file the computed checksums save to in JSON format.",
                      "Contents of the JSON integrity database is equivalent to contents of the extended attributes contents."),
                 join("\t\n\t\t",
+                     "-t, --relative-to, --dump-relative-to [ <path/to/dir/> ]",
+                     "Directory path to write file paths in the dump file (see `--dump-file') relatively to.",
+                     "Dir path specification is optional. If omitted the current working directory is used."),
+                join("\t\n\t\t",
                      "-a, --algorithm <algorithm_name>",
                      "Use the particular digest algorithm.",
                      "Use this option multiple times to use multipe algorithms in parallel.",
@@ -233,10 +258,18 @@ sub print_usage_and_exit {
 # Check validity of provided arguments. In case of an error exit with help
 # message.
 sub check_options {
+
+    # path argument of the `dump-relative-to' option is optional; if no argument
+    # is specified use the current directory
+    $opts->{'dump-relative-to'} = File::Spec->curdir()
+            if (defined($opts->{'dump-relative-to'}) and $opts->{'dump-relative-to'} eq '');
+
     print_usage_and_exit() if ($opts->{'help'});
     print_usage_and_exit(2, 'No files to work on.') unless (scalar(@files) > 0);
     print_usage_and_exit(3, 'Invalid batch size: '.$opts->{'batch-size'})
             if (defined($opts->{'batch-size'}) and $opts->{'batch-size'} < 0);
+    print_usage_and_exit(4, "Invalid directory path of the `--dump-relative-to' option: ".$opts->{'dump-relative-to'})
+            if (defined($opts->{'dump-relative-to'}) and not -d $opts->{'dump-relative-to'});
 }
 
 
@@ -339,7 +372,7 @@ try {
             say "Saving integrity database in UTF-8 encoded JSON format to file '".$opts->{'dump-file'}."'..." if ($opts->{'verbose'} >= 2);
             open(DUMP, ">:encoding(UTF-8)", $opts->{'dump-file'})
                 or die "open(".$opts->{'dump-file'}.") failed: $!";
-            print DUMP $intw->get_stored_attrs_as_json();
+            print DUMP $intw->get_stored_attrs_as_json($opts->{'dump-relative-to'});
             close(DUMP);
             say "Saving integrity database done." if ($opts->{'verbose'} >= 2);
         }

@@ -13,6 +13,7 @@ use FSTreeIntegrityWatch::ExtAttr;
 
 # External modules
 use feature qw(say);
+use File::Basename;
 use File::Find::utf8;
 use File::Spec;
 use JSON;
@@ -370,12 +371,21 @@ sub store_checksums {
 }
 
 # Returns $self->stored_ext_attrs in integrity-database JSON format.
+# args
+#   relative_to dir path to write file paths in the dump relatively to the directory
+#   or undef to insert absolute paths in the dump.
 # returns
 #   integrity-database created from $self->stored_ext_attrs as
 #   pretty printed JSON
 sub get_stored_attrs_as_json {
 
     my $self = shift @_;
+    my $relative_to = shift @_;
+
+    if (defined($relative_to)) {
+        $relative_to = File::Spec->canonpath(File::Spec->rel2abs($relative_to));
+        $relative_to = dirname($relative_to) if (not -d $relative_to);
+    }
 
     my $scsum = $self->stored_ext_attrs;
     my $scdump = {};
@@ -384,7 +394,8 @@ sub get_stored_attrs_as_json {
         foreach my $a (keys %{$scsum->{$f}}) {
             my $n = $scsum->{$f}->{$a}->{'attr_name'};
             my $v = from_json($scsum->{$f}->{$a}->{'attr_value'});
-            $scdump->{$f}->{$n} = $v;
+            my $of = (defined $relative_to) ? File::Spec->abs2rel($f, $relative_to) : $f;
+            $scdump->{$of}->{$n} = $v;
         }
     }
 
