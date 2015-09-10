@@ -10,6 +10,9 @@ use utf8;
 use FSTreeIntegrityWatch::Digest;
 use FSTreeIntegrityWatch::Exception;
 use FSTreeIntegrityWatch::ExtAttr;
+use FSTreeIntegrityWatch::Tools qw(
+    get_iso8601_formated_datetime
+);
 
 # External modules
 use feature qw(say);
@@ -327,6 +330,84 @@ sub clone_configuration {
 }
 
 # For $self->files() computes their checksums using all the $self->algorithms()
+# and dumps the results as an integrity database in JSON format to the given
+# file.
+# args
+#   dump_file   path to JSON file to save the data to
+#   relative_to dir path to write file paths in the dump relatively to
+#               OR undef to insert absolute paths in the dump
+# throws
+#   FSTreeIntegrityWatch::Exception or their subclasses in case of errors during
+#   the processing.
+sub dump_checksums {
+
+    my $self = shift @_;
+    my $dump_file = shift @_;
+    my $relative_to = shift @_;
+
+    $self->exp('Param', "No dumpfile specified.") unless (defined($dump_file));
+
+    $self->print_info("Dumping checksums to '$dump_file'...");
+
+    my $csum  = $self->checksums;
+    my $scsum = {};
+
+    my @inputs = @{$self->files};
+    my $batch_size = $self->batch_size == 0 ? scalar(@inputs) : $self->batch_size;
+    while (my @files = splice(@inputs, 0, $batch_size)) {
+
+        my $config = $self->clone_configuration();
+           $config->recursive(0); # Do not modify the file list.
+           $config->files([@files]);
+
+        my $digest  = FSTreeIntegrityWatch::Digest->new($config);
+        my $batch_csum  = $digest->compute_checksums();
+        foreach my $f (keys %$batch_csum) {
+            $csum->{$f} = $batch_csum->{$f};
+        }
+
+        my $cs        = $config->checksums();
+        my $attr_pref = $config->ext_attr_name_prefix();
+        my $sa = {};
+
+        foreach my $filename (keys %$cs) {
+            foreach my $alg (keys %{$cs->{$filename}}) {
+
+                my $checksum = $cs->{$filename}->{$alg}->{'checksum_value'};
+
+                my $attr_name = sprintf("%s.%s", $attr_pref, $alg);
+                my $attr_value = to_json({
+                    'storedAt' => get_iso8601_formated_datetime(),
+                    'checksum' => $checksum,
+                });
+
+                $config->print_info("storing '$alg' checksum '$checksum' to JSON dump of extended attribute '$attr_name' on '$filename'");
+
+                $sa->{$filename}->{$alg}->{'stored_at'}  = time;
+                $sa->{$filename}->{$alg}->{'attr_name'}  = $attr_name;
+                $sa->{$filename}->{$alg}->{'attr_value'} = $attr_value;
+
+            }
+        }
+
+        foreach my $f (keys %$sa) {
+            $scsum->{$f} = $sa->{$f};
+        }
+
+    }
+
+    my $dumper = $self->clone_configuration();
+    $dumper->stored_ext_attrs($scsum);
+    $dumper->dump_stored_attrs_as_json_to_file($dump_file,
+                                               $relative_to);
+
+    $self->print_info("Dumping checksums done.");
+
+    return $scsum;
+
+}
+
+# For $self->files() computes their checksums using all the $self->algorithms()
 # and stores the results to the extended attributes of the files.
 # returns
 #   stored_ext_attrs hash ref of the used context
@@ -403,7 +484,8 @@ sub get_stored_attrs_as_json {
 
 }
 
-# Stores $self->stored_ext_attrs in integrity database JSON format to files.
+# Stores $self->stored_ext_attrs as an integrity database in JSON format to
+# the given file.
 # args
 #   dump_file   path to JSON file to save the data to
 #   relative_to dir path to write file paths in the dump relatively to

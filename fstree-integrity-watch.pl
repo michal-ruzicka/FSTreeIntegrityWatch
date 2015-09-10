@@ -50,7 +50,12 @@ my @opts_def = (
     'null|0',
     'recursive|r!',
     'verify',
-    'store|save|s' => sub {$opts->{'verify'} = 0},
+    'store|save|s' => sub { $opts->{'store'}  = 1,
+                            $opts->{'verify'} = 0,
+                            $opts->{'dump'}   = 0 },
+    'dump|d' => sub { $opts->{'dump'}   = 1,
+                      $opts->{'verify'} = 0,
+                      $opts->{'store'}  = 0 },
     'dump-file|f=s',
     'dump-relative-to|relative-to|t:s',
     'algorithm|a=s@',
@@ -89,7 +94,7 @@ sub print_usage_and_exit {
             join("\n\t", 'Usage:',
                 join(' ',
                      "$FindBin::Script",
-                     "[ { --verify | --store|--save|-s } ]",
+                     "[ { --verify | --store|--save|-s | --dump|-d } ]",
                      "[ --dump-file|-f path/to/dump_file.json ]",
                      "[ --dump-relative-to|--relative-to|-t [ path/to/dir/ ] ]",
                      "[ { --verbose|-v [ --verbose|-v ... ] | --quiet|-q } ]",
@@ -118,7 +123,7 @@ sub print_usage_and_exit {
                 ),
                 join(' ',
                      "$FindBin::Script",
-                     "--save",
+                     "--dump",
                      "--dump-file testdata.json",
                      "-a CRC-64",
                      "-r",
@@ -208,14 +213,21 @@ sub print_usage_and_exit {
                      "Default mode of operation."),
                 join("\t\n\t\t",
                      "-s, --save, --store",
-                     "Integrity storing mode – computed checksums on the filesusing selected digest algorithm(s) (see `--algorithm') and save them to extended attributes of the files.",
+                     "Integrity storing mode – computed checksums on the files using selected digest algorithm(s) (see `--algorithm') and save them to extended attributes of the files.",
                      "Selected digest algorithm(s) (see `--algorithm') and extended attributes name prefix (see `--ext-attr-prefix') are used.",
+                     "Exit with non-zero exit value in case of any error."),
+                join("\t\n\t\t",
+                     "-d, --dump",
+                     "Integrity dumping mode – computed checksums on the files using selected digest algorithm(s) (see `--algorithm') and dump them as an integrity database in JSON format to a file (see `--dump-file').",
+                     "As no filesystem extended attributes are written to / read from this mode is useful on filesystem with lack of extended attributes support.",
+                     "Selected digest algorithm(s) (see `--algorithm') are used.",
                      "Exit with non-zero exit value in case of any error."),
                 join("\t\n\t\t",
                      "-f, --dump-file <path/to/dump_file.json>",
                      "Path to file in JSON format the computed checksums save to / read from.",
                      "Contents of the JSON integrity database is equivalent to contents of the extended attributes contents.",
                      "In integrity storing mode (see `--save'): computed data is stored to the dump file in addition to writing them to the extended attributes.",
+                     "In integrity dump mode (see `--dump'): computed data is stored to the dump file only; no extended attributes are used (useful for use with filesystem without extended attributes support).",
                      "In integrity verification mode (see `--verify'): file checksums are read from the dump file instead of reading the extended attributes (useful for use with filesystem without extended attributes support)."),
                 join("\t\n\t\t",
                      "-t, --relative-to, --dump-relative-to [ <path/to/dir/> ]",
@@ -280,6 +292,9 @@ sub check_options {
             if (defined($opts->{'batch-size'}) and $opts->{'batch-size'} < 0);
     print_usage_and_exit(4, "Invalid directory path of the `--dump-relative-to' option: ".$opts->{'dump-relative-to'})
             if (defined($opts->{'dump-relative-to'}) and not -d $opts->{'dump-relative-to'});
+    print_usage_and_exit(5, "Use of `--dump-file' option is mandatory in `--dump' mode.")
+            if (defined($opts->{'dump'}) and not defined($opts->{'dump-file'}));
+
 }
 
 
@@ -381,6 +396,10 @@ try {
                 }
             }
         }
+
+    } elsif ($opts->{'dump'}) { # Dump mode
+
+        $intw->dump_checksums($opts->{'dump-file'}, $opts->{'dump-relative-to'});
 
     } else { # Save mode
 
