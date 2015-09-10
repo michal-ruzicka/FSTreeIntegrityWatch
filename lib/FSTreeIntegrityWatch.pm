@@ -369,6 +369,29 @@ sub store_checksums {
 
 }
 
+# Returns $self->stored_ext_attrs in integrity-database JSON format.
+# returns
+#   integrity-database created from $self->stored_ext_attrs as
+#   pretty printed JSON
+sub get_stored_attrs_as_json {
+
+    my $self = shift @_;
+
+    my $scsum = $self->stored_ext_attrs;
+    my $scdump = {};
+
+    foreach my $f (keys %$scsum) {
+        foreach my $a (keys %{$scsum->{$f}}) {
+            my $n = $scsum->{$f}->{$a}->{'attr_name'};
+            my $v = from_json($scsum->{$f}->{$a}->{'attr_value'});
+            $scdump->{$f}->{$n} = $v;
+        }
+    }
+
+    return to_json($scdump, { pretty => 1 });
+
+}
+
 # For $self->files() loads their saved checksums from the extended attributes.
 # returns
 #   loaded_ext_attrs hash ref of the used context

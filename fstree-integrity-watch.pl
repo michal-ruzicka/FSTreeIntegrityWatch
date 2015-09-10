@@ -20,6 +20,7 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
+use feature qw(say);
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
 use List::Util qw(sum);
 use Scalar::Util qw(blessed);
@@ -50,6 +51,7 @@ my @opts_def = (
     'recursive|r!',
     'verify',
     'store|save|s' => sub {$opts->{'verify'} = 0},
+    'dump-file|f=s',
     'algorithm|a=s@',
     'ext-attr-prefix|prefix|p=s',
     'batch-size|b=i',
@@ -87,6 +89,7 @@ sub print_usage_and_exit {
                 join(' ',
                      "$FindBin::Script",
                      "[ { --verify | --store|--save|-s } ]",
+                     "[ --dump-file|-f path/to/dump_file.json ]",
                      "[ { --verbose|-v [ --verbose|-v ... ] | --quiet|-q } ]",
                      "[ --algorithm|-a hash_algorithm_name [ --algorithm|-a hash_algorithm_name ... ] ]",
                      "[ --ext-attr-prefix|--prefix|-p ext_attr_name_prefix ]",
@@ -110,6 +113,14 @@ sub print_usage_and_exit {
                      "--",
                      "testdata/data/dir1/",
                      "testdata/data/file6",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--save",
+                     "--dump-file testdata.json",
+                     "-a CRC-64",
+                     "-r",
+                     "testdata/",
                 ),
                 join(' ',
                      "$FindBin::Script",
@@ -171,6 +182,10 @@ sub print_usage_and_exit {
                      "Integrity storing mode – computed checksums on the filesusing selected digest algorithm(s) (see `--algorithm') and save them to extended attributes of the files.",
                      "Selected digest algorithm(s) (see `--algorithm') and extended attributes name prefix (see `--ext-attr-prefix') are used.",
                      "Exit with non-zero exit value in case of any error."),
+                join("\t\n\t\t",
+                     "-f, --dump-file <path/to/dump_file.json>",
+                     "Path to file the computed checksums save to in JSON format.",
+                     "Contents of the JSON integrity database is equivalent to contents of the extended attributes contents."),
                 join("\t\n\t\t",
                      "-a, --algorithm <algorithm_name>",
                      "Use the particular digest algorithm.",
@@ -320,6 +335,14 @@ try {
     } else {
         # Save mode
         $intw->store_checksums();
+        if (defined($opts->{'dump-file'})) {
+            say "Saving integrity database in UTF-8 encoded JSON format to file '".$opts->{'dump-file'}."'..." if ($opts->{'verbose'} >= 2);
+            open(DUMP, ">:encoding(UTF-8)", $opts->{'dump-file'})
+                or die "open(".$opts->{'dump-file'}.") failed: $!";
+            print DUMP $intw->get_stored_attrs_as_json();
+            close(DUMP);
+            say "Saving integrity database done." if ($opts->{'verbose'} >= 2);
+        }
     }
 } catch {
     if ($opts->{'verbose'} >= 1) {
