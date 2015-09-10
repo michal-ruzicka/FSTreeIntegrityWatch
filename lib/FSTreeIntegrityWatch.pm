@@ -34,7 +34,7 @@ use subs 'batch_size'; # Necessary to provide our own 'recursive' accessor.
 use Class::Tiny {
     'exception_verbosity'      => 0,
     'verbosity'                => 0,
-    'ext_attr_name_prefix'     => 'extattr-file-integrity',
+    'ext_attr_name_prefix'     => 'fstree-integrity-watch',
     'algorithms'               => sub { [ "SHA-256" ] },
     'files'                    => sub { [ ] },
     'recursive'                => 0,

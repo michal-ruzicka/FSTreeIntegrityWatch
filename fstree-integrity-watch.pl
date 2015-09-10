@@ -42,7 +42,7 @@ my $opts = {
     'null' => 0,
     'recursive' => 0,
     'verify' => 1,
-    'ext-attr-prefix' => 'extattr-file-integrity',
+    'ext-attr-prefix' => 'fstree-integrity-watch',
     'verbose' => 1,
 };
 my @opts_def = (
@@ -242,7 +242,7 @@ sub print_usage_and_exit {
                      "-p, --prefix, --ext-attr-prefix <ext_attr_prefix_string>",
                      "Prefix of names of filesystem extended attributes used to store the checksums of files.",
                      "Extended attribute names on the files are assembled as: <ext_attr_prefix_string>.<digest_algorithm_name>",
-                     "Default is 'extattr-file-integrity'."),
+                     "Default is 'fstree-integrity-watch'."),
                 join("\t\n\t\t",
                      "-b, --batch-size",
                      "Defines processing batch size, i.e.",
