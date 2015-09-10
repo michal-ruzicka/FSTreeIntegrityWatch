@@ -11,6 +11,7 @@ use FSTreeIntegrityWatch::Digest;
 use FSTreeIntegrityWatch::Exception;
 use FSTreeIntegrityWatch::ExtAttr;
 use FSTreeIntegrityWatch::Tools qw(
+    decode_locale_if_necessary
     get_iso8601_formated_datetime
 );
 
@@ -506,7 +507,7 @@ sub dump_stored_attrs_as_json_to_file {
     $self->print_info("Saving integrity database in UTF-8 encoded JSON format to file '$dump_file'...");
 
     open(DUMP, ">:encoding(UTF-8)", $dump_file)
-        or $self->exp(undef, "open($dump_file) failed: $_");
+        or $self->exp(undef, "open($dump_file) failed: ".decode_locale_if_necessary($!));
     print DUMP $json_dump;
     close(DUMP);
 
@@ -596,7 +597,7 @@ sub get_loaded_attrs_from_json_file {
     $self->print_info("Loading integrity database in JSON format from file '$dump_file'...");
 
     open(DUMP, "<:encoding(UTF-8)", $dump_file)
-        or $self->exp(undef, "open($dump_file) failed: $_");
+        or $self->exp(undef, "open($dump_file) failed: ".decode_locale_if_necessary($!));
     my @json_lines = <DUMP>;
     my $json_dump = join('', @json_lines);
     close(DUMP);
