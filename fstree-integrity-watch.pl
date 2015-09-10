@@ -293,7 +293,7 @@ sub check_options {
     print_usage_and_exit(4, "Invalid directory path of the `--dump-relative-to' option: ".$opts->{'dump-relative-to'})
             if (defined($opts->{'dump-relative-to'}) and not -d $opts->{'dump-relative-to'});
     print_usage_and_exit(5, "Use of `--dump-file' option is mandatory in `--dump' mode.")
-            if (defined($opts->{'dump'}) and not defined($opts->{'dump-file'}));
+            if ($opts->{'dump'} and not defined($opts->{'dump-file'}));
 
 }
 
