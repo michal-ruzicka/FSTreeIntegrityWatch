@@ -1,0 +1,3 @@
+[submodule "lib/bagit-python"]
+	path = lib/bagit-python
+	url = https://github.com/LibraryOfCongress/bagit-python.git
