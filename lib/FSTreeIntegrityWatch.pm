@@ -7,6 +7,7 @@ use utf8;
 
 
 # Package modules
+use FSTreeIntegrityWatch::BagIt;
 use FSTreeIntegrityWatch::Digest;
 use FSTreeIntegrityWatch::Exception;
 use FSTreeIntegrityWatch::ExtAttr;
@@ -40,9 +41,12 @@ use Class::Tiny {
     'files'                    => sub { [ ] },
     'recursive'                => 0,
     'batch_size'               => 10,
+    'bagit_mode'               => 0,
+    'bagit_py'                 => 'bagit.py',
     'checksums'                => sub { { } },
     'stored_ext_attrs'         => sub { { } },
     'loaded_ext_attrs'         => sub { { } },
+    'validated_bagits'         => sub { { } },
     'detected_file_corruption' => sub { { } },
 };
 
@@ -317,11 +321,14 @@ sub clone_configuration {
         'exception_verbosity'  => $self->exception_verbosity(),
         'verbosity'            => $self->verbosity(),
         'ext_attr_name_prefix' => $self->ext_attr_name_prefix(),
-        'files'                => [ @{$self->files()} ],
         'algorithms'           => [ @{$self->algorithms()} ],
+        'files'                => [ @{$self->files()} ],
         'recursive'            => 0, # Do not traverse the filesystem and
                                      # possibly modify files array when cloning
                                      # configuration!
+        'batch_size'           => $self->batch_size(),
+        'bagit_mode'           => $self->bagit_mode(),
+        'bagit_py'             => $self->bagit_py(),
     );
     $clone->recursive($self->recursive()); # But clone the recursion setting
                                            # finally.
@@ -664,6 +671,7 @@ sub verify_checksums {
            $config->files([@files]);
 
         try {
+
             my $loaded_checksums;
             if (defined($json_file)) {
                 $loaded_checksums = $self->get_loaded_attrs_from_json_file($json_file, $json_relative_to);
@@ -721,6 +729,18 @@ sub verify_checksums {
 
                 }
             }
+
+            if ($config->bagit_mode()) {
+
+                my $bagit = FSTreeIntegrityWatch::BagIt->new($config);
+                my $validated_bagits = $bagit->validate();
+
+                foreach my $filename (sort keys %$validated_bagits) {
+                    $dfc->{$filename}->{'error'}->{'BagIt'} = $validated_bagits->{$filename} unless ($validated_bagits->{$filename}->{'is_valid'});
+                }
+
+            }
+
         } catch {
             $config->exp(undef, "Verification of checksums failed: $_");
         };

@@ -1,16 +1,17 @@
 FSTreeIntegrityWatch
 ====================
 
-Filesystem Tree File Integrity Watch Tool
------------------------------------------
+Filesystem Tree File Integrity Watch Tool with BagIt Validation Support
+-----------------------------------------------------------------------
 
 A tool to store/check file integrity information in filesystem extended
-attributes or JSON integrity database dump.
+attributes or JSON integrity database dump able to validate BagIt format.
 
 See
  * http://man7.org/linux/man-pages/man5/attr.5.html
  * http://man7.org/linux/man-pages/man1/getfattr.1.html
  * http://man7.org/linux/man-pages/man1/setfattr.1.html
+ * http://purl.org/net/bagit
 
 
 ## Usage
@@ -20,9 +21,41 @@ The tools has build-in help. To see usage information run
 `fstree-integrity-watch.pl --help`
 
 
+## BagIt Support
+
+To work with BagIt format we are using Library of Congress implementation of the
+validation tool. The tool is implemented in Python.
+
+See
+ * http://purl.org/net/bagit
+ * https://github.com/LibraryOfCongress/bagit-python
+
+### Installation
+
+#### System installation
+
+`pip install bagit`
+
+Python v2.6+ is required.
+
+#### Git
+
+The official Git repository of the tools
+(https://github.com/LibraryOfCongress/bagit-python) is available as submodule
+under the `utils/bagit-python/` directory:
+
+```bash
+# after checkout
+git submodule update --init --recursive
+...
+# to update working copy
+git submodule update --recursive
+```
+
+
 ## Dependencies
 
-### CPAN modules
+### CPAN Modules
 
 The tools uses bunch of CPAN modules implementing useful functionality. To run
 the tool install the needed modules using your distribution software management
@@ -91,7 +124,7 @@ See
  * http://perldoc.perl.org/perlootut.html
 
 
-### Command line parsing
+### Command Line Parsing
 
 Command line arguments are processed using `Getopt::Long` module. GNU getopt
 and advanced features such as options bundling and auto completion can be used.

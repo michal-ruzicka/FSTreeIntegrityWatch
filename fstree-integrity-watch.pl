@@ -31,6 +31,9 @@ use FindBin;
 use lib "$FindBin::Bin/lib/";
 use FSTreeIntegrityWatch;
 
+# External tools
+my $bagit_py = "$FindBin::Bin/utils/bagit-python/bagit.py";
+
 
 
 #
@@ -44,6 +47,8 @@ my $opts = {
     'verify' => 1,
     'ext-attr-prefix' => 'fstree-integrity-watch',
     'verbose' => 1,
+    'bagit' => 0,
+    'bagit-py' => "$bagit_py",
 };
 my @opts_def = (
     '' => sub {$opts->{'stdin'} = 1},
@@ -63,6 +68,8 @@ my @opts_def = (
     'batch-size|b=i',
     'verbose|v+',
     'quiet|q' => sub {$opts->{'verbose'} = 0},
+    'bagit|g!',
+    'bagit-py=s',
     'help|h',
 );
 
@@ -100,7 +107,11 @@ sub print_usage_and_exit {
                      "[ { --verbose|-v [ --verbose|-v ... ] | --quiet|-q } ]",
                      "[ --algorithm|-a hash_algorithm_name [ --algorithm|-a hash_algorithm_name ... ] ]",
                      "[ --ext-attr-prefix|--prefix|-p ext_attr_name_prefix ]",
+                     "[ --[no-]recursive|-r ]",
+                     "[ --null|-0 ]",
                      "[ --batch-size|-b size ]",
+                     "[ --[no-]bagit|-g ]",
+                     "[ --bagit-py path/to/bagit.py ]",
                      "--",
                      "{ - | file [ file ... ] }",
                 ),
@@ -160,6 +171,13 @@ sub print_usage_and_exit {
                      "$FindBin::Script",
                      "-a SHA-256",
                      "testdata/data/file6",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "-r",
+                     "--bagit",
+                     "--bagit-py utils/bagit-python/bagit.py",
+                     "testdata/bagit/",
                 ),
                 join(' ',
                      "$FindBin::Script",
@@ -251,6 +269,16 @@ sub print_usage_and_exit {
                      "Use '0' to process all input files in a single batch or a positive integer to set exact batch size.",
                      "Default is '10'."),
                 join("\t\n\t\t",
+                     "-g, --[no-]bagit",
+                     "If enabled, directories are tested to be in BagIt format (and consequently to be in valid Bagit format) in integrity verification mode.",
+                     "Bagit format is validated using Python validation tool by Library of Congress.",
+                     "Default is `--no-bagit'."),
+                join("\t\n\t\t",
+                     "--bagit-py",
+                     "Path to `bagit.py' BagIt format Python validation tool.",
+                     "Use `--bagit-py bagit.py' to use system wide (i.e. in \$PATH available) installation of bagit.py.",
+                     "Default is 'utils/bagit-python/bagit.py'."),
+                join("\t\n\t\t",
                      "-v, --verbose",
                      "Set verbosity level. Multiple uses of this option increase the detail of info messages.",
                      "level 1 (default): print warning and error messages",
@@ -294,6 +322,8 @@ sub check_options {
             if (defined($opts->{'dump-relative-to'}) and not -d $opts->{'dump-relative-to'});
     print_usage_and_exit(5, "Use of `--dump-file' option is mandatory in `--dump' mode.")
             if ($opts->{'dump'} and not defined($opts->{'dump-file'}));
+    print_usage_and_exit(6, "'".$opts->{'bagit-py'}."' is not valid path to executable `bagit.py' validation tool.")
+            if (defined($opts->{'bagit-py'}) and not (-e $opts->{'bagit-py'} or $opts->{'bagit-py'} eq 'bagit.py'));
 
 }
 
@@ -339,6 +369,8 @@ my $intw = FSTreeIntegrityWatch->new(
     'ext_attr_name_prefix' => $opts->{'ext-attr-prefix'},
     'files'                => [ @files ],
     'recursive'            => $opts->{'recursive'},
+    'bagit_mode'           => $opts->{'bagit'},
+    'bagit_py'             => $opts->{'bagit-py'},
 );
 $intw->algorithms($opts->{'algorithm'}) if (defined($opts->{'algorithm'}));
 $intw->batch_size($opts->{'batch-size'}) if (defined($opts->{'batch-size'}));
@@ -382,11 +414,18 @@ try {
             if ($opts->{'verbose'} >= 1) {
                 foreach my $filename (sort keys %$dfc) {
                     foreach my $alg (sort keys %{$dfc->{$filename}->{'error'}}) {
-                        my $ecsum    = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'};
-                        my $ecsum_ts = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum_stored_at'};
-                        my $ccsum    = $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'};
-                        printf STDERR "File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' (stored at '%s') – current checksum '%s'\n",
-                                      $filename, $alg, $ecsum, $ecsum_ts, $ccsum;
+                        if ($alg eq 'BagIt') {
+                            my $rv   = $dfc->{$filename}->{'error'}->{$alg}->{'return_value'};
+                            my $desc = $dfc->{$filename}->{'error'}->{$alg}->{'description'};
+                            printf STDERR "Invalid BagIt found: path '%s' – validation tool return value '%d' – error description '%s'\n",
+                                          $filename, $rv, $desc;
+                        } else {
+                            my $ecsum    = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'};
+                            my $ecsum_ts = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum_stored_at'};
+                            my $ccsum    = $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'};
+                            printf STDERR "File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' (stored at '%s') – current checksum '%s'\n",
+                                          $filename, $alg, $ecsum, $ecsum_ts, $ccsum;
+                        }
                     }
                     foreach my $alg (sort keys %{$dfc->{$filename}->{'warning'}}) {
                         my $msg = $dfc->{$filename}->{'warning'}->{$alg}->{'message'};

@@ -18,6 +18,7 @@ our @EXPORT_OK = qw(
     extattr_error
     param_error
     param_format_error
+    bagit_error
 );
 our %EXPORT_TAGS = (
     all => [ @EXPORT_OK ],
@@ -64,6 +65,12 @@ use Exception::Class (
         'alias'       => 'param_format_error',
         'isa'         => 'FSTreeIntegrityWatch::Exception::Param',
         'description' => 'error thrown when invalid method parameter is used',
+    },
+
+    'FSTreeIntegrityWatch::Exception::BagIt' => {
+        'alias'       => 'bagit_error',
+        'isa'         => 'FSTreeIntegrityWatch::Exception',
+        'description' => 'error thrown when working with BagIt data',
     },
 
 );
