@@ -39,6 +39,7 @@ use Encode::Locale;
 use Encode;
 use Exception::Class;
 use Exporter;
+use File::Basename;
 use File::ExtAttr;
 use File::Find::utf8;
 use File::Spec;

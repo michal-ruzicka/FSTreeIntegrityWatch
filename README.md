@@ -1,11 +1,11 @@
 FSTreeIntegrityWatch
 ====================
 
-Filesystem Tree Extended Attributes File Integrity Tool
--------------------------------------------------------
+Filesystem Tree File Integrity Watch Tool
+-----------------------------------------
 
 A tool to store/check file integrity information in filesystem extended
-attributes.
+attributes or JSON integrity database dump.
 
 See
  * http://man7.org/linux/man-pages/man5/attr.5.html
@@ -17,7 +17,7 @@ See
 
 The tools has build-in help. To see usage information run
 
-`extattr-file-integrity.pl --help`
+`fstree-integrity-watch.pl --help`
 
 
 ## All-in-one executable
@@ -35,8 +35,8 @@ Than you can pack the script with all the dependencies running
 
 `pack-to-executable.sh`
 
-producing standalone binary executable `extattr-file-integrity.packed-standalone`
-and Perl scripts `extattr-file-integrity.packed-*.pl` with various level of
+producing standalone binary executable `fstree-integrity-watch.packed-standalone`
+and Perl scripts `fstree-integrity-watch.packed-*.pl` with various level of
 dependencies packed inside to be run on slim Perl installations.
 
 See
@@ -55,8 +55,9 @@ the tool install the needed modules using your distribution software management
 tool or install up-to-date versions directly from CPAN:
 
 `cpan Class::Tiny DateTime Digest Encode Encode::Locale Exception::Class
-Exporter File::ExtAttr File::Find::utf8 File::Spec FindBin Getopt::Long JSON
-List::Compare List::MoreUtils List::Util Module::Load Scalar::Util Try::Tiny`
+Exporter File::Basename File::ExtAttr File::Find::utf8 File::Spec FindBin
+Getopt::Long JSON List::Compare List::MoreUtils List::Util Module::Load
+Scalar::Util Try::Tiny`
 
 Various digest algorithms are implemented in separate modules. The modules are
 loaded dynamically at runtime when needed so it is sufficient to install the

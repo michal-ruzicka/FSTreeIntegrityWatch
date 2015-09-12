@@ -10,9 +10,14 @@ use utf8;
 use FSTreeIntegrityWatch::Digest;
 use FSTreeIntegrityWatch::Exception;
 use FSTreeIntegrityWatch::ExtAttr;
+use FSTreeIntegrityWatch::Tools qw(
+    decode_locale_if_necessary
+    get_iso8601_formated_datetime
+);
 
 # External modules
 use feature qw(say);
+use File::Basename;
 use File::Find::utf8;
 use File::Spec;
 use JSON;
@@ -30,7 +35,7 @@ use subs 'batch_size'; # Necessary to provide our own 'recursive' accessor.
 use Class::Tiny {
     'exception_verbosity'      => 0,
     'verbosity'                => 0,
-    'ext_attr_name_prefix'     => 'extattr-file-integrity',
+    'ext_attr_name_prefix'     => 'fstree-integrity-watch',
     'algorithms'               => sub { [ "SHA-256" ] },
     'files'                    => sub { [ ] },
     'recursive'                => 0,
@@ -326,6 +331,84 @@ sub clone_configuration {
 }
 
 # For $self->files() computes their checksums using all the $self->algorithms()
+# and dumps the results as an integrity database in JSON format to the given
+# file.
+# args
+#   dump_file   path to JSON file to save the data to
+#   relative_to dir path to write file paths in the dump relatively to
+#               OR undef to insert absolute paths in the dump
+# throws
+#   FSTreeIntegrityWatch::Exception or their subclasses in case of errors during
+#   the processing.
+sub dump_checksums {
+
+    my $self = shift @_;
+    my $dump_file = shift @_;
+    my $relative_to = shift @_;
+
+    $self->exp('Param', "No dumpfile specified.") unless (defined($dump_file));
+
+    $self->print_info("Dumping checksums to '$dump_file'...");
+
+    my $csum  = $self->checksums;
+    my $scsum = {};
+
+    my @inputs = @{$self->files};
+    my $batch_size = $self->batch_size == 0 ? scalar(@inputs) : $self->batch_size;
+    while (my @files = splice(@inputs, 0, $batch_size)) {
+
+        my $config = $self->clone_configuration();
+           $config->recursive(0); # Do not modify the file list.
+           $config->files([@files]);
+
+        my $digest  = FSTreeIntegrityWatch::Digest->new($config);
+        my $batch_csum  = $digest->compute_checksums();
+        foreach my $f (keys %$batch_csum) {
+            $csum->{$f} = $batch_csum->{$f};
+        }
+
+        my $cs        = $config->checksums();
+        my $attr_pref = $config->ext_attr_name_prefix();
+        my $sa = {};
+
+        foreach my $filename (keys %$cs) {
+            foreach my $alg (keys %{$cs->{$filename}}) {
+
+                my $checksum = $cs->{$filename}->{$alg}->{'checksum_value'};
+
+                my $attr_name = sprintf("%s.%s", $attr_pref, $alg);
+                my $attr_value = to_json({
+                    'storedAt' => get_iso8601_formated_datetime(),
+                    'checksum' => $checksum,
+                });
+
+                $config->print_info("storing '$alg' checksum '$checksum' to JSON dump of extended attribute '$attr_name' on '$filename'");
+
+                $sa->{$filename}->{$alg}->{'stored_at'}  = time;
+                $sa->{$filename}->{$alg}->{'attr_name'}  = $attr_name;
+                $sa->{$filename}->{$alg}->{'attr_value'} = $attr_value;
+
+            }
+        }
+
+        foreach my $f (keys %$sa) {
+            $scsum->{$f} = $sa->{$f};
+        }
+
+    }
+
+    my $dumper = $self->clone_configuration();
+    $dumper->stored_ext_attrs($scsum);
+    $dumper->dump_stored_attrs_as_json_to_file($dump_file,
+                                               $relative_to);
+
+    $self->print_info("Dumping checksums done.");
+
+    return $scsum;
+
+}
+
+# For $self->files() computes their checksums using all the $self->algorithms()
 # and stores the results to the extended attributes of the files.
 # returns
 #   stored_ext_attrs hash ref of the used context
@@ -369,6 +452,162 @@ sub store_checksums {
 
 }
 
+# Returns $self->stored_ext_attrs in integrity database JSON format.
+# args
+#   relative_to dir path to write file paths in the dump relatively to
+#   or undef to insert absolute paths in the dump
+# returns
+#   integrity database created from $self->stored_ext_attrs as
+#   pretty printed JSON
+sub get_stored_attrs_as_json {
+
+    my $self = shift @_;
+    my $relative_to = shift @_;
+
+    if (defined($relative_to)) {
+        $relative_to = File::Spec->canonpath(File::Spec->rel2abs($relative_to));
+        $relative_to = dirname($relative_to) if (not -d $relative_to);
+    }
+
+    my $scsum = $self->stored_ext_attrs;
+    my $scdump = {};
+
+    foreach my $f (keys %$scsum) {
+        foreach my $a (keys %{$scsum->{$f}}) {
+            my $n = $scsum->{$f}->{$a}->{'attr_name'};
+            my $v = from_json($scsum->{$f}->{$a}->{'attr_value'});
+            my $of = (defined $relative_to) ? File::Spec->abs2rel($f, $relative_to) : $f;
+            $scdump->{$of}->{$n} = $v;
+        }
+    }
+
+    return to_json($scdump, { pretty => 1 });
+
+}
+
+# Stores $self->stored_ext_attrs as an integrity database in JSON format to
+# the given file.
+# args
+#   dump_file   path to JSON file to save the data to
+#   relative_to dir path to write file paths in the dump relatively to
+#               OR undef to insert absolute paths in the dump
+# throws
+#   FSTreeIntegrityWatch::Exception in case of file manipulation error
+#   FSTreeIntegrityWatch::Exception::Param if no dump_file is specified
+sub dump_stored_attrs_as_json_to_file {
+
+    my $self = shift @_;
+    my $dump_file = shift @_;
+    my $relative_to = shift @_;
+
+    $self->exp('Param', "No dumpfile specified.") unless (defined($dump_file));
+
+    my $json_dump = $self->get_stored_attrs_as_json($relative_to);
+
+    $self->print_info("Saving integrity database in UTF-8 encoded JSON format to file '$dump_file'...");
+
+    open(DUMP, ">:encoding(UTF-8)", $dump_file)
+        or $self->exp(undef, "open($dump_file) failed: ".decode_locale_if_necessary($!));
+    print DUMP $json_dump;
+    close(DUMP);
+
+    $self->print_info("Saving integrity database done.");
+
+}
+
+# Returns data from integrity database in JSON format produced
+# by $self->get_stored_attrs_as_json() in $self->stored_ext_attrs format.
+# args
+#   json_dump   JSON dump of integrity checksums produced by
+#               $self->get_stored_attrs_as_json()
+#   relative_to dir path to interpret file paths in the dump
+#               relatively to
+#               OR undef to use unmodified paths from the dump
+# returns
+#   hash ref in $self->stored_ext_attrs format
+sub get_loaded_attrs_from_json {
+
+    my $self = shift @_;
+    my $json_dump = shift @_;
+    my $relative_to = shift @_;
+
+    if (defined($relative_to)) {
+        $relative_to = File::Spec->canonpath(File::Spec->rel2abs($relative_to));
+        $relative_to = dirname($relative_to) if (not -d $relative_to);
+    }
+
+    $self->print_info("Loading checksums from JSON dump ".(defined($relative_to) ? "relatively to '$relative_to'" : '')."...");
+
+    my $la        = {};
+    my $attr_pref = $self->ext_attr_name_prefix();
+
+    my $prefix_name_re = qr/^(\Q$attr_pref\E)\.(\S+)$/;
+
+    my $json = from_json($json_dump);
+
+    foreach my $f (keys %$json) {
+
+        my $abs_fn = defined($relative_to) ? File::Spec->canonpath(File::Spec->rel2abs($f, $relative_to)) : $f;
+
+        foreach my $n (keys %{$json->{$f}}) {
+
+            my $v = $json->{$f}->{$n};
+
+            if ($n =~ $prefix_name_re) {
+
+                my ($prefix, $alg) = ($1, $2);
+
+                $self->print_info("loading checksum from JSON dump of attribute '$n' of '$f'");
+
+                $la->{$abs_fn}->{$alg}->{'loaded_at'}  = time;
+                $la->{$abs_fn}->{$alg}->{'attr_name'}  = $n;
+                $la->{$abs_fn}->{$alg}->{'attr_value'} = to_json($v);
+
+            }
+
+        }
+
+    }
+
+    $self->print_info("Loading checksums from JSON dump done.");
+
+    return $la;
+
+}
+
+# Returns data from file with integrity database in JSON format produced by
+# $self->dump_stored_attrs_as_json_to_file() in $self->stored_ext_attrs format.
+# args
+#   dump_file  path to JSON dump file to load the data from
+#   relative_to dir path to interpret file paths in the dump
+#               relatively to
+#               OR undef to use unmodified paths from the dump
+# returns
+#   hash ref in $self->stored_ext_attrs format
+# throws
+#   FSTreeIntegrityWatch::Exception::Param if no dump_file is specified
+sub get_loaded_attrs_from_json_file {
+
+    my $self = shift @_;
+    my $dump_file = shift @_;
+    my $relative_to = shift @_;
+
+    $self->exp('Param', "No dumpfile specified.") unless (defined($dump_file));
+
+    $self->print_info("Loading integrity database in JSON format from file '$dump_file'...");
+
+    open(DUMP, "<:encoding(UTF-8)", $dump_file)
+        or $self->exp(undef, "open($dump_file) failed: ".decode_locale_if_necessary($!));
+    my @json_lines = <DUMP>;
+    my $json_dump = join('', @json_lines);
+    close(DUMP);
+
+    $self->print_info("Loading integrity database done.");
+
+    return $self->get_loaded_attrs_from_json($json_dump, $relative_to)
+
+}
+
 # For $self->files() loads their saved checksums from the extended attributes.
 # returns
 #   loaded_ext_attrs hash ref of the used context
@@ -393,6 +632,14 @@ sub load_checksums {
 # For $self->files() loads their saved checksums from the extended attributes,
 # recalculates the checksums using $self->algorithms() and compare the loaded
 # checksums with the newly computed checksums.
+# args
+#   json_file  JSON dump file with integrity checksums produced by
+#              $self->dump_stored_attrs_as_json_to_file() to use instead of
+#              reading extended attributes form the filesystem
+#              OR undef to read extended attributes form the filesystem
+#   json_relative_to dir path to interpret file paths in the dump
+#                    relatively to
+#                    OR undef to use unmodified paths from the dump
 # returns
 #   detected_file_corruption hash ref of the used context
 # throws
@@ -401,6 +648,8 @@ sub load_checksums {
 sub verify_checksums {
 
     my $self = shift @_;
+    my $json_file = shift @_;
+    my $json_relative_to = shift @_;
 
     $self->print_info("Verifying checksums...");
 
@@ -415,8 +664,13 @@ sub verify_checksums {
            $config->files([@files]);
 
         try {
-            my $extattr = FSTreeIntegrityWatch::ExtAttr->new($config);
-            my $loaded_checksums = $extattr->load_checksums();
+            my $loaded_checksums;
+            if (defined($json_file)) {
+                $loaded_checksums = $self->get_loaded_attrs_from_json_file($json_file, $json_relative_to);
+            } else {
+                my $extattr = FSTreeIntegrityWatch::ExtAttr->new($config);
+                $loaded_checksums = $extattr->load_checksums();
+            }
 
             # It is not necessary to computed checksums for files/algorithm we
             # do not know the previous values to compare with. Thus, prepare

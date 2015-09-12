@@ -20,6 +20,7 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
+use File::Spec;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
 use List::Util qw(sum);
 use Scalar::Util qw(blessed);
@@ -41,7 +42,7 @@ my $opts = {
     'null' => 0,
     'recursive' => 0,
     'verify' => 1,
-    'ext-attr-prefix' => 'extattr-file-integrity',
+    'ext-attr-prefix' => 'fstree-integrity-watch',
     'verbose' => 1,
 };
 my @opts_def = (
@@ -49,7 +50,14 @@ my @opts_def = (
     'null|0',
     'recursive|r!',
     'verify',
-    'store|save|s' => sub {$opts->{'verify'} = 0},
+    'store|save|s' => sub { $opts->{'store'}  = 1,
+                            $opts->{'verify'} = 0,
+                            $opts->{'dump'}   = 0 },
+    'dump|d' => sub { $opts->{'dump'}   = 1,
+                      $opts->{'verify'} = 0,
+                      $opts->{'store'}  = 0 },
+    'dump-file|f=s',
+    'dump-relative-to|relative-to|t:s',
     'algorithm|a=s@',
     'ext-attr-prefix|prefix|p=s',
     'batch-size|b=i',
@@ -86,7 +94,9 @@ sub print_usage_and_exit {
             join("\n\t", 'Usage:',
                 join(' ',
                      "$FindBin::Script",
-                     "[ { --verify | --store|--save|-s } ]",
+                     "[ { --verify | --store|--save|-s | --dump|-d } ]",
+                     "[ --dump-file|-f path/to/dump_file.json ]",
+                     "[ --dump-relative-to|--relative-to|-t [ path/to/dir/ ] ]",
                      "[ { --verbose|-v [ --verbose|-v ... ] | --quiet|-q } ]",
                      "[ --algorithm|-a hash_algorithm_name [ --algorithm|-a hash_algorithm_name ... ] ]",
                      "[ --ext-attr-prefix|--prefix|-p ext_attr_name_prefix ]",
@@ -110,6 +120,41 @@ sub print_usage_and_exit {
                      "--",
                      "testdata/data/dir1/",
                      "testdata/data/file6",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--dump",
+                     "--dump-file testdata.json",
+                     "-a CRC-64",
+                     "-r",
+                     "testdata/",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--save",
+                     "--dump-file testdata.json",
+                     "--dump-relative-to testdata/data/",
+                     "-a CRC-64",
+                     "-r",
+                     "testdata/",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--dump-file testdata.json",
+                     "--dump-relative-to testdata/data/",
+                     "-a SHA-256",
+                     "-a CRC-64",
+                     "-r",
+                     "testdata/",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--save",
+                     "--dump-file testdata.json",
+                     "--dump-relative-to",
+                     "-a CRC-64",
+                     "-r",
+                     "testdata/",
                 ),
                 join(' ',
                      "$FindBin::Script",
@@ -168,9 +213,26 @@ sub print_usage_and_exit {
                      "Default mode of operation."),
                 join("\t\n\t\t",
                      "-s, --save, --store",
-                     "Integrity storing mode – computed checksums on the filesusing selected digest algorithm(s) (see `--algorithm') and save them to extended attributes of the files.",
+                     "Integrity storing mode – computed checksums on the files using selected digest algorithm(s) (see `--algorithm') and save them to extended attributes of the files.",
                      "Selected digest algorithm(s) (see `--algorithm') and extended attributes name prefix (see `--ext-attr-prefix') are used.",
                      "Exit with non-zero exit value in case of any error."),
+                join("\t\n\t\t",
+                     "-d, --dump",
+                     "Integrity dumping mode – computed checksums on the files using selected digest algorithm(s) (see `--algorithm') and dump them as an integrity database in JSON format to a file (see `--dump-file').",
+                     "As no filesystem extended attributes are written to / read from this mode is useful on filesystem with lack of extended attributes support.",
+                     "Selected digest algorithm(s) (see `--algorithm') are used.",
+                     "Exit with non-zero exit value in case of any error."),
+                join("\t\n\t\t",
+                     "-f, --dump-file <path/to/dump_file.json>",
+                     "Path to file in JSON format the computed checksums save to / read from.",
+                     "Contents of the JSON integrity database is equivalent to contents of the extended attributes contents.",
+                     "In integrity storing mode (see `--save'): computed data is stored to the dump file in addition to writing them to the extended attributes.",
+                     "In integrity dump mode (see `--dump'): computed data is stored to the dump file only; no extended attributes are used (useful for use with filesystem without extended attributes support).",
+                     "In integrity verification mode (see `--verify'): file checksums are read from the dump file instead of reading the extended attributes (useful for use with filesystem without extended attributes support)."),
+                join("\t\n\t\t",
+                     "-t, --relative-to, --dump-relative-to [ <path/to/dir/> ]",
+                     "Directory path to read/write file paths in the dump file (see `--dump-file') relatively to.",
+                     "Dir path specification is optional. If omitted the current working directory is used."),
                 join("\t\n\t\t",
                      "-a, --algorithm <algorithm_name>",
                      "Use the particular digest algorithm.",
@@ -180,7 +242,7 @@ sub print_usage_and_exit {
                      "-p, --prefix, --ext-attr-prefix <ext_attr_prefix_string>",
                      "Prefix of names of filesystem extended attributes used to store the checksums of files.",
                      "Extended attribute names on the files are assembled as: <ext_attr_prefix_string>.<digest_algorithm_name>",
-                     "Default is 'extattr-file-integrity'."),
+                     "Default is 'fstree-integrity-watch'."),
                 join("\t\n\t\t",
                      "-b, --batch-size",
                      "Defines processing batch size, i.e.",
@@ -218,10 +280,21 @@ sub print_usage_and_exit {
 # Check validity of provided arguments. In case of an error exit with help
 # message.
 sub check_options {
+
+    # path argument of the `dump-relative-to' option is optional; if no argument
+    # is specified use the current directory
+    $opts->{'dump-relative-to'} = File::Spec->curdir()
+            if (defined($opts->{'dump-relative-to'}) and $opts->{'dump-relative-to'} eq '');
+
     print_usage_and_exit() if ($opts->{'help'});
     print_usage_and_exit(2, 'No files to work on.') unless (scalar(@files) > 0);
     print_usage_and_exit(3, 'Invalid batch size: '.$opts->{'batch-size'})
             if (defined($opts->{'batch-size'}) and $opts->{'batch-size'} < 0);
+    print_usage_and_exit(4, "Invalid directory path of the `--dump-relative-to' option: ".$opts->{'dump-relative-to'})
+            if (defined($opts->{'dump-relative-to'}) and not -d $opts->{'dump-relative-to'});
+    print_usage_and_exit(5, "Use of `--dump-file' option is mandatory in `--dump' mode.")
+            if ($opts->{'dump'} and not defined($opts->{'dump-file'}));
+
 }
 
 
@@ -292,9 +365,15 @@ my $rv = 0;
 try {
     # Mode of operation – verify existing saved checksums or save the current
     # state?
-    if ($opts->{'verify'}) {
-        # Verify mode
-        my $dfc = $intw->verify_checksums();
+    if ($opts->{'verify'}) { # Verification mode
+
+        my $dfc;
+        if (defined($opts->{'dump-file'})) {
+            $dfc = $intw->verify_checksums($opts->{'dump-file'}, $opts->{'dump-relative-to'});
+        } else {
+            $dfc = $intw->verify_checksums();
+        }
+
         if (scalar(keys %$dfc) > 0) {
             # Exit with error exit code only in case of error, warnings are OK.
             $rv = sum(map { exists($dfc->{$_}->{'error'}) ? 1 : 0 } keys %$dfc) > 0 ? 1 : 0;
@@ -317,9 +396,17 @@ try {
                 }
             }
         }
-    } else {
-        # Save mode
+
+    } elsif ($opts->{'dump'}) { # Dump mode
+
+        $intw->dump_checksums($opts->{'dump-file'}, $opts->{'dump-relative-to'});
+
+    } else { # Save mode
+
         $intw->store_checksums();
+        $intw->dump_stored_attrs_as_json_to_file($opts->{'dump-file'},
+                                                 $opts->{'dump-relative-to'}) if (defined($opts->{'dump-file'}));
+
     }
 } catch {
     if ($opts->{'verbose'} >= 1) {
