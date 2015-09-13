@@ -277,7 +277,7 @@ sub print_usage_and_exit {
                      "--bagit-py",
                      "Path to `bagit.py' BagIt format Python validation tool.",
                      "Use `--bagit-py bagit.py' to use system wide (i.e. in \$PATH available) installation of bagit.py.",
-                     "Default is 'utils/bagit-python/bagit.py'."),
+                     "Default is 'utils/bagit-python/bagit.py' relatively to this executable path."),
                 join("\t\n\t\t",
                      "-v, --verbose",
                      "Set verbosity level. Multiple uses of this option increase the detail of info messages.",

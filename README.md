@@ -53,7 +53,7 @@ git submodule update --recursive
 ```
 
 
-## Dependencies
+## Dependencies & Implementation Notes
 
 ### CPAN Modules
 
