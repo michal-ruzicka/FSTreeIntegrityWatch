@@ -20,6 +20,7 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
+use feature qw(say);
 use File::Spec;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
 use List::Util qw(sum);
@@ -327,6 +328,34 @@ sub check_options {
 
 }
 
+# Print processing warning message if the current verbosity level instructs us
+# to do so.
+# args
+#   message to print
+sub print_warning {
+
+    my $msg = shift @_;
+
+    chomp $msg;
+
+    say STDERR "$msg" if ($opts->{'verbose'} >= 1);
+
+}
+
+# Print processing info message if the current verbosity level instructs us to
+# do so.
+# args
+#   message to print
+sub print_info {
+
+    my $msg = shift @_;
+
+    chomp $msg;
+
+    say "$msg" if ($opts->{'verbose'} >= 2);
+
+}
+
 
 
 #
@@ -342,6 +371,7 @@ try {
 
     @files = @ARGV; # Use file paths from the command line.
     if ($opts->{'stdin'}) { # Use file paths from STDIN in configured.
+        print_info("Reading files list from the standard input...");
         my $orig_separator = $/;
         # Allow NULL separated strings if configured – useful for handling `find
         # some/dir/ -print0' outputs.
@@ -351,6 +381,7 @@ try {
             push(@files, $fp);
         }
         $/ = $orig_separator;
+        print_info("Reading files list from the standard input done.");
     }
 
     # Check the configuration.
@@ -365,6 +396,7 @@ try {
 };
 
 # Setup FSTreeIntegrityWatch according to our configuration.
+print_info("Building files list...");
 my $intw = FSTreeIntegrityWatch->new(
     'ext_attr_name_prefix' => $opts->{'ext-attr-prefix'},
     'files'                => [ @files ],
@@ -372,6 +404,7 @@ my $intw = FSTreeIntegrityWatch->new(
     'bagit_mode'           => $opts->{'bagit'},
     'bagit_py'             => $opts->{'bagit-py'},
 );
+print_info("Building files list done.");
 $intw->algorithms($opts->{'algorithm'}) if (defined($opts->{'algorithm'}));
 $intw->batch_size($opts->{'batch-size'}) if (defined($opts->{'batch-size'}));
 $intw->verbosity($opts->{'verbose'} > 2 ? 2 : $opts->{'verbose'});
