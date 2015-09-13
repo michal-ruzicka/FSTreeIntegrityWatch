@@ -56,10 +56,10 @@ sub validate {
         if (not defined($filename)) {
             $err = "No filename specified.";
         } elsif (not -d $filename) {
-            $self->context->print_info("'$filename' is not a directory, verifying it to be BagIt directory is meaningless");
+            #$self->context->print_info("'$filename' is not a directory, verifying it to be BagIt directory is meaningless");
             next;
         } elsif (not -f File::Spec->catfile($filename, 'bagit.txt')) {
-            $self->context->print_info("'".File::Spec->catfile($filename, 'bagit.txt')."' does not exist, skipping '$filename' as not seeming to be a BagIt directory");
+            #$self->context->print_info("'".File::Spec->catfile($filename, 'bagit.txt')."' does not exist, skipping '$filename' as not seeming to be a BagIt directory");
             next;
         }
         $self->context->exp('BagIt', $err) if (defined($err));

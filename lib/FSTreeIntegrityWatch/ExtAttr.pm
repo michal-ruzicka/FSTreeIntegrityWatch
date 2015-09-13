@@ -112,7 +112,7 @@ sub load_checksums {
         if (not defined($filename)) {
             $err = "No filename specified.";
         } elsif (-d $filename) {
-            $self->context->print_warning("'$filename' is a directory, loading its checksum is meaningless");
+            #$self->context->print_info("'$filename' is a directory, loading its checksum is meaningless");
             next;
         }
         $self->context->exp('ExtAttr', $err) if (defined($err));
