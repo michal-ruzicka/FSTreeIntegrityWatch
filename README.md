@@ -63,7 +63,7 @@ tool or install up-to-date versions directly from CPAN:
 
 `cpan Class::Tiny DateTime Digest Encode Encode::Locale Exception::Class
 Exporter File::Basename File::ExtAttr File::Find File::Spec FindBin
-Getopt::Long IPC::Open3 JSON List::Compare List::MoreUtils List::Util
+Getopt::Long IO::Handle IPC::Open3 JSON List::Compare List::MoreUtils List::Util
 Module::Load Scalar::Util Try::Tiny`
 
 Various digest algorithms are implemented in separate modules. The modules are
