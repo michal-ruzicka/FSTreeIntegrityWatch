@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export ifile='fstree-integrity-watch.pl'
-export PP_OPTS="--verbose=3 --compile --execute --clean --compress 9 -I lib -M FSTreeIntegrityWatch::Packer"
+export PP_OPTS="--verbose=3 --compile --execute --clean --compress 9 -I lib -M FSTreeIntegrityWatch::Packer -a utils/bagit-python/bagit.py -a utils/bagit-python/README.md"
 
 
 # Stand-alone setup
