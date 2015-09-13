@@ -154,15 +154,15 @@ sub files {
             foreach my $f (@$files) {
                 push(@$find_dirs, $f) if (-d $f);
             }
-            my $find_files = [];
+            my $find_files = {};
             find({ follow => 1,
+                   follow_skip => 2,
                    no_chdir => 1,
                    wanted => sub {
-                       push(@$find_files,
-                            File::Spec->canonpath(File::Spec->rel2abs(decode_locale_if_necessary($File::Find::name))));
-                   }
+                       $find_files->{File::Spec->canonpath(File::Spec->rel2abs(decode_locale_if_necessary($File::Find::name)))}++;
+                   },
                  }, @$find_dirs) if (scalar(@$find_dirs) > 0);
-            push(@$files, @$find_files);
+            push(@$files, keys %$find_files);
         }
 
         @$files = uniq sort @$files;
