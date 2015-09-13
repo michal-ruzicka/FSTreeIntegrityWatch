@@ -20,9 +20,9 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
-use feature qw(say);
 use File::Spec;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
+use IO::Handle;
 use List::Util qw(sum);
 use Scalar::Util qw(blessed);
 use Try::Tiny;
@@ -338,7 +338,7 @@ sub print_warning {
 
     chomp $msg;
 
-    say STDERR "$msg" if ($opts->{'verbose'} >= 1);
+    IO::Handle::printflush STDERR "$msg\n" if ($opts->{'verbose'} >= 1);
 
 }
 
@@ -352,7 +352,7 @@ sub print_info {
 
     chomp $msg;
 
-    say "$msg" if ($opts->{'verbose'} >= 2);
+    IO::Handle::printflush STDOUT "$msg\n" if ($opts->{'verbose'} >= 2);
 
 }
 
@@ -450,20 +450,20 @@ try {
                         if ($alg eq 'BagIt') {
                             my $rv   = $dfc->{$filename}->{'error'}->{$alg}->{'return_value'};
                             my $desc = $dfc->{$filename}->{'error'}->{$alg}->{'description'};
-                            printf STDERR "Invalid BagIt found: path '%s' – validation tool return value '%d' – error description '%s'\n",
-                                          $filename, $rv, $desc;
+                            IO::Handle::printflush STDERR sprintf("Invalid BagIt found: path '%s' – validation tool return value '%d' – error description '%s'\n",
+                                                                  $filename, $rv, $desc);
                         } else {
                             my $ecsum    = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum'};
                             my $ecsum_ts = $dfc->{$filename}->{'error'}->{$alg}->{'expected_checksum_stored_at'};
                             my $ccsum    = $dfc->{$filename}->{'error'}->{$alg}->{'computed_checksum'};
-                            printf STDERR "File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' (stored at '%s') – current checksum '%s'\n",
-                                          $filename, $alg, $ecsum, $ecsum_ts, $ccsum;
+                            IO::Handle::printflush STDERR sprintf("File corruption detected: file '%s' – algorithm '%s' – expected checksum '%s' (stored at '%s') – current checksum '%s'\n",
+                                                                  $filename, $alg, $ecsum, $ecsum_ts, $ccsum);
                         }
                     }
                     foreach my $alg (sort keys %{$dfc->{$filename}->{'warning'}}) {
                         my $msg = $dfc->{$filename}->{'warning'}->{$alg}->{'message'};
-                        printf STDERR "File integrity verification warning: file '%s' – %s\n",
-                                      $filename, $msg;
+                        IO::Handle::printflush STDERR sprintf("File integrity verification warning: file '%s' – %s\n",
+                                                              $filename, $msg);
                     }
                 }
             }

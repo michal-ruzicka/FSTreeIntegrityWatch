@@ -57,6 +57,7 @@ use File::Find;
 use File::Spec;
 use FindBin;
 use Getopt::Long;
+use IO::Handle;
 use IPC::Open3;
 use JSON;
 use List::Compare;
