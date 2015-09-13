@@ -382,7 +382,8 @@ sub compute_checksums {
                 $self->context->print_warning("'$filename' is a directory, computing its checksum is meaningless");
                 next;
             } else {
-                $err = "'$filename' is not a readable file.";
+                $self->context->print_warning("'$filename' is not a readable file; skipping.");
+                next;
             }
             $self->context->exp('Digest', $err) if (defined($err));
 
