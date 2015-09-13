@@ -14,6 +14,32 @@ See
  * http://purl.org/net/bagit
 
 
+## All-in-one executable
+
+**This feature is highly experimental!**
+
+You can use Perl Archive Toolkit (PAR) to create a single all-in-one binary
+executable of the tool.
+
+It is necessary to have `PAR::Packer` tool installed:
+
+`cpan PAR::Packer`
+
+Than you can pack the script with all the dependencies running
+
+`pack-to-executable.sh`
+
+producing standalone binary executable `fstree-integrity-watch.packed-standalone`
+and Perl scripts `fstree-integrity-watch.packed-*.pl` with various level of
+dependencies packed inside to be run on slim Perl installations.
+
+See
+  * https://metacpan.org/pod/pp
+  * https://metacpan.org/pod/PAR::Tutorial
+  * https://metacpan.org/pod/PAR::Packer
+  * https://metacpan.org/pod/PAR
+
+
 ## Usage
 
 The tools has build-in help. To see usage information run
