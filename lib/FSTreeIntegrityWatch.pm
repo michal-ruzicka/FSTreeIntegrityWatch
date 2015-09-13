@@ -19,7 +19,7 @@ use FSTreeIntegrityWatch::Tools qw(
 # External modules
 use feature qw(say);
 use File::Basename;
-use File::Find::utf8;
+use File::Find;
 use File::Spec;
 use JSON;
 use List::Compare;
@@ -159,7 +159,7 @@ sub files {
                    no_chdir => 1,
                    wanted => sub {
                        push(@$find_files,
-                            File::Spec->canonpath(File::Spec->rel2abs($File::Find::name)))
+                            File::Spec->canonpath(File::Spec->rel2abs(decode_locale_if_necessary($File::Find::name))));
                    }
                  }, @$find_dirs) if (scalar(@$find_dirs) > 0);
             push(@$files, @$find_files);

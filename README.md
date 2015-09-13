@@ -62,7 +62,7 @@ the tool install the needed modules using your distribution software management
 tool or install up-to-date versions directly from CPAN:
 
 `cpan Class::Tiny DateTime Digest Encode Encode::Locale Exception::Class
-Exporter File::Basename File::ExtAttr File::Find::utf8 File::Spec FindBin
+Exporter File::Basename File::ExtAttr File::Find File::Spec FindBin
 Getopt::Long IPC::Open3 JSON List::Compare List::MoreUtils List::Util
 Module::Load Scalar::Util Try::Tiny`
 
