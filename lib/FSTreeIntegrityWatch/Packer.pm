@@ -53,7 +53,7 @@ use Exception::Class;
 use Exporter;
 use File::Basename;
 use File::ExtAttr;
-use File::Find::utf8;
+use File::Find;
 use File::Spec;
 use FindBin;
 use Getopt::Long;
