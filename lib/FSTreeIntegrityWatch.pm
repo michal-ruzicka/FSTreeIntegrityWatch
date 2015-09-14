@@ -530,6 +530,9 @@ sub dump_stored_attrs_as_json_to_file {
 #   relative_to dir path to interpret file paths in the dump
 #               relatively to
 #               OR undef to use unmodified paths from the dump
+#   files       array ref to list of file paths to use form the JSON dump (other
+#               files are filtered out)
+#               OR undef to work with all the files from the JSON dump
 # returns
 #   hash ref in $self->stored_ext_attrs format
 sub get_loaded_attrs_from_json {
@@ -537,6 +540,7 @@ sub get_loaded_attrs_from_json {
     my $self = shift @_;
     my $json_dump = shift @_;
     my $relative_to = shift @_;
+    my $files = shift @_;
 
     if (defined($relative_to)) {
         $relative_to = File::Spec->canonpath(File::Spec->rel2abs($relative_to));
@@ -544,6 +548,13 @@ sub get_loaded_attrs_from_json {
     }
 
     $self->print_info("Loading checksums from JSON dump ".(defined($relative_to) ? "relatively to '$relative_to'" : '')."...");
+
+    my $files_hash;
+    if (defined($files)) {
+        foreach my $abs_fn (@$files) {
+            $files_hash->{$abs_fn}++;
+        }
+    }
 
     my $la        = {};
     my $attr_pref = $self->ext_attr_name_prefix();
@@ -555,6 +566,10 @@ sub get_loaded_attrs_from_json {
     foreach my $f (keys %$json) {
 
         my $abs_fn = defined($relative_to) ? File::Spec->canonpath(File::Spec->rel2abs($f, $relative_to)) : $f;
+
+        if (defined($files)) {
+            next unless(exists($files_hash->{$abs_fn}));
+        }
 
         foreach my $n (keys %{$json->{$f}}) {
 
@@ -589,6 +604,9 @@ sub get_loaded_attrs_from_json {
 #   relative_to dir path to interpret file paths in the dump
 #               relatively to
 #               OR undef to use unmodified paths from the dump
+#   files       array ref to list of file paths to use form the JSON dump (other
+#               files are filtered out)
+#               OR undef to work with all the files from the JSON dump
 # returns
 #   hash ref in $self->stored_ext_attrs format
 # throws
@@ -598,6 +616,7 @@ sub get_loaded_attrs_from_json_file {
     my $self = shift @_;
     my $dump_file = shift @_;
     my $relative_to = shift @_;
+    my $files = shift @_;
 
     $self->exp('Param', "No dumpfile specified.") unless (defined($dump_file));
 
@@ -611,7 +630,7 @@ sub get_loaded_attrs_from_json_file {
 
     $self->print_info("Loading integrity database done.");
 
-    return $self->get_loaded_attrs_from_json($json_dump, $relative_to)
+    return $self->get_loaded_attrs_from_json($json_dump, $relative_to, $files)
 
 }
 
@@ -674,7 +693,7 @@ sub verify_checksums {
 
             my $loaded_checksums;
             if (defined($json_file)) {
-                $loaded_checksums = $self->get_loaded_attrs_from_json_file($json_file, $json_relative_to);
+                $loaded_checksums = $self->get_loaded_attrs_from_json_file($json_file, $json_relative_to, [@files]);
             } else {
                 my $extattr = FSTreeIntegrityWatch::ExtAttr->new($config);
                 $loaded_checksums = $extattr->load_checksums();
