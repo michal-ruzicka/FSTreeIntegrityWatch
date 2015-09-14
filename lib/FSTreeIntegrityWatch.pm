@@ -17,10 +17,10 @@ use FSTreeIntegrityWatch::Tools qw(
 );
 
 # External modules
+use feature qw(say);
 use File::Basename;
 use File::Find;
 use File::Spec;
-use IO::Handle;
 use JSON;
 use List::Compare;
 use List::MoreUtils qw(uniq);
@@ -288,7 +288,7 @@ sub print_warning {
 
     chomp $msg;
 
-    IO::Handle::printflush STDERR "$msg\n" if ($self->verbosity >= 1);
+    say STDERR "$msg" if ($self->verbosity >= 1);
 
 }
 
@@ -303,7 +303,7 @@ sub print_info {
 
     chomp $msg;
 
-    IO::Handle::printflush STDOUT "$msg\n" if ($self->verbosity >= 2);
+    say "$msg" if ($self->verbosity >= 2);
 
 }
 
